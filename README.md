@@ -1,8 +1,8 @@
-<p>############ INDELWALD - HYBRID INDEL CALLING ##############</p>
-<p>####################### Version 1.0 ########################</p>
+<b>############ INDELWALD - HYBRID INDEL CALLING ##############</b>
 
+<p>## Version 1.0 </p>
+<p>## Last Update - 04/08/2015 ##</p>
 <p>## mrs72 / Maximilian Stammnitz ##</p>
-<p>## Last Update - 04/08/2015     ##</p>
 
 <p>This small framework consists of a few components for analysing DFTD indels:</p>
 1. An R-file containing all functions for post-processing and displaying Pindel and Platypus calls
