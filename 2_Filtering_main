@@ -1,0 +1,347 @@
+############ INDELWALD - HYBRID INDEL CALLING ##############
+####################### Version 1.0 ########################
+
+## MAIN
+## Last Update - 04/08/2015 ##
+## mrs72 / Maximilian Stammnitz ##
+
+
+## 0. Setting Up Work-Environment ## 
+## ## ## ## ## ## ## ## ## ## ## ###
+
+# Source functions and packages
+setwd("/Users/ms37/Desktop/Labwork/6_June/R-scripts")
+source("/Users/ms37/Desktop/Labwork/6_June/R-scripts/VCF_Filtering_functions.R")
+source("/Users/ms37/Desktop/Labwork/6_June/R-scripts/Contig_Translate.R")
+library(VennDiagram)
+library(gridExtra)
+library(data.table)
+library(GenomicRanges)
+library(stringr)
+library(sqldf)
+#library(biomaRt)
+#library(beeswarm)
+
+# Import Contig-Size List, Driver-Gene List from COSMIC, Devil-Gene List from ENSEMBL Biomart
+contig.size <- read.table("/Users/ms37/Desktop/Data/Info-Files/Ref7.1_ContigPositions.txt", header=T)
+devil.transcripts <- read.table("/Users/ms37/Desktop/Data/Info-Files/All_Exons.adj3.txt", header=T, sep=";")
+devil.transcripts.translation <- read.table("/Users/ms37/Desktop/Data/Info-Files/All_Transcripts.translated.txt", header=T, sep=";")
+devil.genes.translation <- read.table("/Users/ms37/Desktop/Data/Info-Files/All_Genes.translated.txt", header=T, sep=";")
+devil.genes <- read.table("/Users/ms37/Desktop/Data/Info-Files/All_Genes.adj.txt", header=T)
+#cosmic.genes <- read.csv("/Users/ms37/Desktop/Data/Info-Files/COSMIC_Genes_Drivers.csv")
+
+
+# Set Directories
+Home <- c("/Users/ms37/Desktop/Data/Processed_Full")
+setwd(Home)
+
+# Run on Sample
+files <- list.files()[grep("#", list.files())]
+
+
+# Run on EACH Chromosome "c"
+chromosomes <- c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chrx", "chrU")
+
+
+# Pre-allocate a List for the Final Stats
+final.results <- vector(mode = "list", length = length(files))
+names(final.results) <- files
+
+
+## Wrapper-Loop for ALL Samples  ## 
+## ## ## ## ## ## ## ## ## ## ## ##
+
+for (s in 1:length(files)){
+
+  # Pre-allocate Results-Matrix
+  results <- matrix(0, nrow = length(chromosomes)+1, ncol = 11)
+  colnames(results) <- c("Total Unique", "Raw cgpPindel", "Raw Platypus", "Overlap",
+                         "Pindel-Quality Filtered", "Platypus-Quality Filtered", "Transcripts", 
+                         "Exons", "Introns", "Start Codons", "Stop Codons")
+  rownames(results) <- c(chromosomes, "total")
+  
+  
+  # Loop Functions over each Chromosome
+  for (c in chromosomes){
+    
+    
+    ## 1. Load Data for a Specific Sample & Chromosome ##
+    ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+    
+    # Datafolder
+    setwd(paste0(Home,"/",files[s]))
+    
+    # Fetch Pindel File
+    cat(paste("\n Loading cgpPindel VCF. -", files[s], "-", c))
+    
+    # Fast File Import via SQL
+    pindel.name1 <- list.files()[grep(c, list.files())][1]
+    tmp <- file(paste0(pindel.name1))
+    assign(paste0("pindel.", strsplit(files[s], "#")[[1]][2], ".", c), 
+           sqldf("select * from tmp", dbname = tempfile(), 
+                 file.format = list(header = T, row.names = F, sep="!")))
+    pindel.name <- paste0("pindel.", strsplit(files[s], "#")[[1]][2], ".", c)
+
+    
+    # Fetch Platypus File
+    cat(paste("\n Loading Platypus VCF. -", files[s], "-", c))
+    
+    # Fast File Import via SQL
+    platypus.name1 <- list.files()[grep(c, list.files())][2]
+    tmp <- file(paste0(platypus.name1))
+    assign(paste0("platypus.", strsplit(files[s], "#")[[1]][2], ".", c), 
+           sqldf("select * from tmp", dbname = tempfile(), 
+                 file.format = list(header = T, row.names = F, sep="!")))
+    platypus.name <- paste0("platypus.", strsplit(files[s], "#")[[1]][2], ".", c)
+    closeAllConnections()
+    
+
+    ## 2. Check Raw Pindel/Platypus Calls  ##
+    ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+    
+    # Plot Raw Call Venn for Chromosome or Contig
+    cat(paste("\n Plotting cgpPindel-Platypus Overlap. -", files[s], "-", c))
+    
+    raw.calls(pindel.vcf = get(pindel.name),
+              platypus.vcf = get(platypus.name),
+              chromosome = paste0(strsplit(c, "r")[[1]][2]),
+              sample = paste0(strsplit(files[s], "#")[[1]][2]),
+              venns = "N",
+              contig = "")
+    
+    
+    ## 3. Check Raw Pindel/Platypus Sizes  ##
+    ## ## ## ## ## ## ## ## ## ## ## ## ## ##
+    
+    # Plot Size Distributions between Pindel and Platypus
+    cat(paste("\n Plotting cgpPindel-Platypus Indel Sizes. -", files[s], "-", c))
+    
+    raw.sizes(pindel.vcf = get(pindel.name),
+              platypus.vcf = get(platypus.name),
+              chromosome = paste0(strsplit(c, "r")[[1]][2]),
+              sample = paste0(strsplit(files[s], "#")[[1]][2]),
+              boxplot = "N",
+              venns = "N")
+    
+    
+    ## 4. Apply Filters  ##
+    ## ## ## ## ## ## ## ##
+    
+    # Take Overlap
+    cat(paste("\n Overlap-Filtering. -", files[s], "-", c))
+    
+    assign(paste0("overlap.", strsplit(files[s], "#")[[1]][2], ".", c),
+           overlap.vcf(pindel.vcf = get(pindel.name),platypus.vcf = get(platypus.name)))
+    overlap.name <- paste0("overlap.", strsplit(files[s], "#")[[1]][2], ".", c)
+    
+    # Apply a Pindel-Quality Filter (why does memory not go down efficiently?)
+    cat(paste("\n cgpPindel Quality-Filtering. -", files[s], "-", c))
+    
+    assign(paste0("overlap.pindelfilter.", strsplit(files[s], "#")[[1]][2], ".", c),
+           pindel.filter(overlap = get(overlap.name), threshold = 30))
+    overlap.pindelfilter.name <- paste0("overlap.pindelfilter.", strsplit(files[s], "#")[[1]][2], ".", c)
+    
+    # Apply a Platypus-Quality Filter
+    cat(paste("\n Platypus Quality-Filtering. -", files[s], "-", c))
+    
+    assign(paste0("overlap.platypusfilter.",strsplit(files[s], "#")[[1]][2], ".", c),
+           platypus.filter(overlap = get(overlap.pindelfilter.name), threshold = 30))
+    overlap.platypusfilter.name <- paste0("overlap.platypusfilter.", strsplit(files[s], "#")[[1]][2], ".", c)
+    
+    
+    ## 5. Visualise INDELs   ##
+    ## ## ## ## ## ## ## ## ###
+    
+    # Get Size Ranges (take Platypus-Output for extracting Read-Calls)
+    cat(paste("\n Matching Contig-Positions to Chromosomal Positions. -", files[s], "-", c))
+    
+    assign(paste0("summary.", strsplit(files[s], "#")[[1]][2], ".", c),
+          indel.summary(contig.sizes = contig.size,
+                        pindel.call.vcf = get(overlap.platypusfilter.name)[[1]],
+                        platypus.call.vcf = get(overlap.platypusfilter.name)[[2]]))
+    summary.name <- paste0("summary.", strsplit(files[s], "#")[[1]][2], ".", c)
+    
+    # Density Plot 
+    cat(paste("\n Plotting raw Indel-Density. -", files[s], "-", c))
+    
+    gene.range <- paste(c(toupper(strsplit(c,"")[[1]][1]),paste(strsplit(c,"")[[1]][2:4], collapse="")),
+                        collapse="")
+    indel.density.plot(hits = get(summary.name),
+                       contig.lengths = contig.size,
+                       genes = devil.genes[grep(gene.range, devil.genes[,1]),],
+                       chromosome = paste0(strsplit(c, "r")[[1]][2]),
+                       sample = paste0(strsplit(files[s], "#")[[1]][2]))
+    
+    # Rainfall Plot
+    cat(paste("\n Plotting Rainfall. -", files[s], "-", c))
+    
+    indel.rainfall.plot(hits = get(summary.name),
+                        contig.lengths = contig.size,
+                        chromosome = paste0(strsplit(c, "r")[[1]][2]),
+                        sample = paste0(strsplit(files[s], "#")[[1]][2]),
+                        individuals = "N")
+   
+    # Rainfall Plot with type specifications
+    
+    cat(paste("\n Plotting Type-Rainfalls. -", files[s], "-", c))
+    indel.rainfall.plot.types(hits = get(summary.name),
+                              chromosome = paste0(strsplit(c, "r")[[1]][2]),
+                              sample = paste0(strsplit(files[s], "#")[[1]][2]))
+    
+    # BAF Plot
+ 
+    cat(paste("\n Plotting Bi-Allelic Frequency. -", files[s], "-", c))
+    indel.baf.plot(hits = get(summary.name), 
+                   contig.lengths = contig.size,
+                   chromosome = paste0(strsplit(c, "r")[[1]][2]),
+                   sample = paste0(strsplit(files[s], "#")[[1]][2]),
+                   pindel = "N")
+    
+    
+    ## 6. Gene/Exon Filtering  ##
+    ## ## ## ## ## ## ## ## ## ##
+    
+    # Check Genelist vs. Hits
+    
+    cat(paste("\n Pull out Hits within the Transcription Range. -", files[s], "-", c))
+    assign(paste0("transcript.hits.", strsplit(files[s], "#")[[1]][2], ".", c), 
+           transcript.hits(devil.transcripts = devil.transcripts,
+                           hits = get(summary.name),
+                           chromosome = paste0(strsplit(c, "r")[[1]][2])))
+    transcripthits.name <- paste0("transcript.hits.", strsplit(files[s], "#")[[1]][2], ".", c)
+  
+    
+    ## Add to Results
+    
+    cat(paste("\n Pull out Statistics. -", files[s], "-", c))
+    results[c,1] <- length(get(pindel.name)[,1])+length(get(platypus.name)[,1])-length(get(overlap.name)[[1]][,1])
+    results[c,2] <- length(get(pindel.name)[,1]) 
+    results[c,3] <- length(get(platypus.name)[,1])
+    results[c,4] <- length(get(overlap.name)[[1]][,1])
+    results[c,5] <- length(get(overlap.pindelfilter.name)[[1]][,1])
+    results[c,6] <- length(get(overlap.platypusfilter.name)[[1]][,1])
+    results[c,7] <- length(get(transcripthits.name)[,1])
+    results[c,8] <- length(which(get(transcripthits.name)[, "RNA Type"]=="exon"))   
+    results[c,9] <- length(which(get(transcripthits.name)[, "RNA Type"]=="intron"))
+    results[c,10] <- length(which(get(transcripthits.name)[, "RNA Type"]=="start_codon"))
+    results[c,11] <- length(which(get(transcripthits.name)[, "RNA Type"]=="stop_codon"))
+    
+    cat(paste("\n Clearing Memory. -", files[s], "-", c))
+    
+    rm(pindel.name, pindel.name1, platypus.name, platypus.name1, 
+       gene.range, overlap.name, summary.name, tmp, transcripthits.name,
+       overlap.pindelfilter.name, overlap.platypusfilter.name)
+    rm(list=ls()[grep("pindel", ls())][1:2])
+    rm(list=ls()[grep("platypus", ls())][1:2])
+        
+    cat("\n")
+    
+  }
+
+  
+  ## 8. Genome-Wide Checks ##
+  ## ## ## ## ##  ## ## ## ##
+  
+  # Summaries 
+  cat(paste("\n Summarising all filtered Calls. -", files[s]))  
+  assign(paste0("summary.", strsplit(files[s], "#")[[1]][2]),
+         indel.summary.full(summary.chr1 = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][1]),
+                            summary.chr2 = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][2]),
+                            summary.chr3 = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][3]),
+                            summary.chr4 = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][4]),
+                            summary.chr5 = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][5]),
+                            summary.chr6 = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][6]),
+                            summary.chrx = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][8]),
+                            summary.chrU = get(ls()[grep(paste0("summary.",strsplit(files[s],"#")[[1]][2]), ls())][7])))
+  full.summary.name <- paste0("summary.", strsplit(files[s], "#")[[1]][2])
+  
+  cat(paste("\n Summarising all Transcript Calls. -", files[s]))  
+  assign(paste0("transcript.hits.", strsplit(files[s], "#")[[1]][2]),
+         transcript.summary.full(transcripts.chr1 = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][1]),
+                            transcripts.chr2 = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][2]),
+                            transcripts.chr3 = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][3]),
+                            transcripts.chr4 = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][4]),
+                            transcripts.chr5 = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][5]),
+                            transcripts.chr6 = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][6]),
+                            transcripts.chrx = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][8]),
+                            transcripts.chrU = get(ls()[grep(paste0("transcript.hits.",strsplit(files[s],"#")[[1]][2]), ls())][7])))
+  transcript.hits.name <- paste0("transcript.hits.", strsplit(files[s], "#")[[1]][2])
+  
+  # BAF
+  cat(paste("\n Full Sample BAF Plot. -", files[s]))  
+  indel.baf.plot.full(hits = get(full.summary.name),
+                      contig.lengths = contig.size,
+                      sample = paste0(strsplit(files[s], "#")[[1]][2]),
+                      pindel = "Y")
+  
+  # Rainfall
+  cat(paste("\n Full Sample Rainfall Plot. -", files[s]))  
+  indel.rainfall.plot.full(hits = get(full.summary.name),
+                           contig.lengths = contig.size,
+                           sample = paste0(strsplit(files[s], "#")[[1]][2]),
+                           genomic = "Y")
+  
+  
+  ## 9. Output ##
+  ## ## ## ## ###
+  
+  # Statistics
+  cat(paste("\n Pull out Complete Statistics. -", files[s]))  
+  results["total",] <- apply(results, 2, sum)
+  assign(paste0("results.",strsplit(files[s],"#")[[1]][2]), results)
+  
+  # Write Down Stats
+  write.table(results, paste0("Stats_", files[s], ".txt"))
+  final.results[[s]] <- results
+  
+  # Save working environment
+  cat(paste("\n Save Working Environment Statistics. -", files[s]))
+  rm(full.summary.name, transcript.hits.name)
+  rm(list=ls()[grep("results", ls())][3:4])
+  rm(list=ls()[grep("chr", ls())][-1])
+  save.image(paste0("Complete_", files[s], ".Rdata"))
+
+  # Remove all remaining data gained in this particular run
+  rm(list=ls()[grep(strsplit(files[s],"#")[[1]][2], ls())])
+  cat("\n")
+}
+
+
+## 10. Final Conclusions ##
+## ## ## ## ## ## ## ## ###
+
+# Plot Calling Stats
+
+final.results.plots(final.results)
+
+
+# Translate Hit Names
+
+transcripts <- ls()[grep("transcript.hits", ls())][2:10]
+for (i in 1:length(transcripts)){
+  assign(paste0("transcript.hits.", strsplit(files[i], "#")[[1]][2]), 
+         hits.translate(hits = get(transcripts[i]),
+                        devil.genes.translation,
+                        devil.transcripts.translation,
+                        contig.length = contig.size))
+}
+
+
+# Take the EXON-Overlap of 202T2, 203T3, 202H1 203H
+
+DFT2 <- DFT2.venn(hits_202T2 = transcript.hits.202T2, 
+                  hits_203H = transcript.hits.203H, 
+                  hits_203T3 = transcript.hits.203T3,
+                  hits_202H1 = transcript.hits.202H1,
+                  titulo = "Shared DFT2 Exon INDELs")
+
+
+# Make a BAF-plot of the shared, union and both unique Sets
+
+DFT2.baf(DFT2 = DFT2,
+         contig.lengths = contig.size)
+
+
+
+# Save Results
+save.image("All_Transcripthits20.Rdata")
