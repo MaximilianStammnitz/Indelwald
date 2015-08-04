@@ -1,0 +1,2391 @@
+############ INDELWALD - HYBRID INDEL CALLING ##############
+####################### Version 1.0 ########################
+
+## FUNCTIONS
+## Last Update - 04/08/2015 ##
+## mrs72 / Maximilian Stammnitz ##
+
+
+# 1. Compare the Raw Calls of Pindel and Platypus
+raw.calls <- function(pindel.vcf, platypus.vcf, chromosome, 
+                      sample, contig = "", venns = "N"){
+  
+  # Packages
+  #require(VennDiagram)
+  
+  # Output folder
+  setwd(paste0(Home,"/Output/", sample))
+  
+  
+  ## a. For all Contigs
+  
+  if(is.character(contig)){
+        
+    # Merge Contig and Positions for obtaining Unique Identifiers
+    pindel.vcf[,1] <- paste(pindel.vcf[,1], pindel.vcf[,2], sep="_")
+    platypus.vcf[,1] <- paste(platypus.vcf[,1], platypus.vcf[,2], sep="_")
+    
+    # Total number of RAW calls
+    full.pindel <- length(pindel.vcf[,"Contig"]) 
+    full.platypus <- length(platypus.vcf[,"Contig"])
+    full.both <- intersect(pindel.vcf[,"Contig"],platypus.vcf[,"Contig"])
+    full.both <- length(full.both)
+    
+    # Percentages
+    if(full.pindel!=full.both){
+      pindel.perc <- 100*round(1-(full.both/full.pindel),3)
+    }else if(full.pindel==full.both){
+      pindel.perc <- 100
+    }
+    
+    if(full.platypus!=full.both){
+      platypus.perc <- 100*round(1-(full.both/full.platypus),3)
+    }else if(full.platypus==full.both){
+      platypus.perc <- 100
+    }
+    
+    
+    # b. Make a Venn between Pindel and Platypus Calls    
+    
+    if(venns == "Y"){
+      # Slow variant, but with proportional Overlap
+      venn.full <- draw.pairwise.venn(area1=full.pindel,
+                                      area2=full.platypus,
+                                      cross.area=full.both,
+                                      category = c(paste0("Pindel [", pindel.perc, "%]"),
+                                                   paste0("Platypus [", platypus.perc, "%]")),
+                                      fontfamily = rep("sans", 3), cat.fontfamily = "sans",
+                                      fill = c("blue", "orange"), euler.d=TRUE, scaled=TRUE, 
+                                      ind = FALSE, cex=1.3, cat.cex=0.6)
+      
+      pdf(paste0("Raw_", sample, "_chr", chromosome, ".pdf"), width=8,height=8)
+      grid.arrange(gTree(children=venn.full), 
+                   main=textGrob(paste0("Call-Overlap ", sample, " - on Chr. ", chromosome), gp=gpar(cex=2.5), 
+                                 just="top"))
+      dev.off()
+      
+      # Quick and dirty
+      #venn.full <- venn.diagram(list(Platypus = platypus.vcf[,1] , cgpPindel = pindel.vcf[,1]),
+      #                          "check")
+    }
+    
+    
+    ## c. Make Venns, only for a specified Contig
+    
+  }else if(contig%%1==0){
+      
+      # Adjust for Contig-counting from 0
+      contig <- contig+1
+      
+      # Take the Contig
+      tmp.contig <- as.character(unique(pindel.vcf[,"Contig"])[contig])
+      
+      # Adjust for Contig-counting from 0
+      contig <- contig-1
+      
+      cat(paste0("\n INDEL Calls on Contig ", 
+                 strsplit(tmp.contig,"_")[[1]][3]))  
+      
+      # Take each Position on the Contig for Platypus/Pindel
+      contig.pindel <- which(pindel.vcf[,"Contig"]==tmp.contig)
+      contig.pindel <- length(contig.pindel)
+      contig.platypus <- which(platypus.vcf[,"Contig"]==tmp.contig)
+      contig.platypus <- length(contig.platypus)
+      contig.both <- intersect(pindel.vcf[which(pindel.vcf[,"Contig"]==tmp.contig),
+                                          "Position"],
+                               platypus.vcf[which(platypus.vcf[,"Contig"]==tmp.contig),
+                                            "Position"])
+      contig.both <- length(contig.both)
+      
+      # Percentages
+      if(contig.pindel!=contig.both){
+        pindel.perc <- 100*round(1-(contig.both/contig.pindel),3)
+      }else if(contig.pindel==contig.both){
+        pindel.perc <- 100
+      }
+      
+      if(contig.platypus!=contig.both){
+        platypus.perc <- 100*round(1-(contig.both/contig.platypus),3)
+      }else if(contig.platypus==contig.both){
+        platypus.perc <- 100
+      }
+      
+      # Make a Venn between Pindel and Platypus Calls
+      venn.contig <- draw.pairwise.venn(area1=contig.pindel,
+                                        area2=contig.platypus,
+                                        cross.area=contig.both,
+                                        category = c(paste0("cgpPindel [", pindel.perc, " %]"),
+                                                     paste0("Platypus [", platypus.perc, " %]")),
+                                        fontfamily = rep("sans", 3), cat.fontfamily = "sans",
+                                        fill = c("blue", "orange"), euler.d=TRUE, scaled=TRUE, 
+                                        ind = FALSE, cex=1.3, cat.cex=0.6)
+      
+      pdf(paste0(sample, "_chr", chromosome, "_cont", contig, ".pdf"), width=8,height=8)
+      grid.arrange(gTree(children=venn.contig), 
+                   main=textGrob(paste0("Call-Overlap ", sample, " - on Chr. ", chromosome, ", Contig ",
+                                        strsplit(tmp.contig,"_")[[1]][3]),gp=gpar(cex=2.5), just="top"))
+      dev.off()
+      cat("\n \n")
+  } 
+}
+
+
+# 2. Compare the Raw Sizes of Pindel and Platypus Calls
+raw.sizes <- function(pindel.vcf, platypus.vcf,
+                      chromosome, sample,
+                      boxplot = "N",
+                      venns = "N"){
+  
+  # Packages
+  #require(VennDiagram)
+  #require(gridExtra)
+  #require(beeswarm)
+  
+  # Output folder
+  setwd(paste0(Home,"/Output/", sample))
+  
+  
+  ## a. Length of all INDELs
+  
+  # cgpPindel
+  pindel.ref.lenghts <- nchar(as.character(pindel.vcf[,3]))
+  pindel.alt.lenghts <- nchar(as.character(pindel.vcf[,4]))
+  pindel.alt.InsDels <- pindel.alt.lenghts-pindel.ref.lenghts
+  
+  # Platypus
+  platypus.ref.lenghts <- nchar(as.character(platypus.vcf[,3]))
+  platypus.alt.lenghts <- nchar(as.character(platypus.vcf[,4]))
+  platypus.alt.InsDels <- platypus.alt.lenghts-platypus.ref.lenghts
+  
+  
+  ## b. Calling Sensitivity-Curves
+  
+  # Plots
+  pdf(paste0("Size_Plot_", sample, "_chr", chromosome, ".pdf"), width=18, height=8)
+  par(mfrow=c(1,2),oma = c(0, 0, 3, 0))
+  hist.pindel.sizes <- hist(pindel.alt.InsDels[which(pindel.alt.InsDels> -100 & pindel.alt.InsDels< 100,T)], 
+                            plot=F, breaks=seq(f= -100, t=100, by=2))
+  hist.platypus.sizes <- hist(platypus.alt.InsDels[which(platypus.alt.InsDels> -100 & platypus.alt.InsDels< 100,T)], 
+                              plot=F, breaks=seq(f= -100, t=100, by=2))
+  
+  # Add +- 100 bp distributions
+  options(warn=-1)
+  plot(hist.pindel.sizes$counts~hist.pindel.sizes$mids, log="y", type="l",
+       lwd=2, pch=16, col="blue", lty=1, main=NA, ylab="Frequency", xlab="Size [Bp]",
+       ylim=c(1,100000), cex=0.7, cex.lab=1.3, cex.main=1.8, xlim=c(-100,100))
+  lines(hist.platypus.sizes$counts~hist.platypus.sizes$mids, type="l",
+        lwd=rep(2,2), pch=16, cex=0.7, col="red", lty=2)
+  legend("topleft", legend=c("cgpPindel", "Platypus"), col=c("blue", "red"), lty=c(1,1), lwd=c(2,2), cex=1.2)
+  
+  hist.pindel.sizes <- hist(pindel.alt.InsDels, 
+                            plot=F, breaks=seq(f= round(min(pindel.alt.InsDels, -9900)-100, -2),
+                                               t= round(max(pindel.alt.InsDels, 500)+100, -2), by=100))
+  hist.platypus.sizes <- hist(platypus.alt.InsDels, 
+                              plot=F, breaks=seq(f= round(min(platypus.alt.InsDels, -9900)-100, -2),
+                                                 t = round(max(platypus.alt.InsDels, 500)+100, -2), by=100))
+  
+  # Add large Deletion distributions
+  plot(hist.pindel.sizes$counts~hist.pindel.sizes$mids, log="y", type="l",
+       lwd=2, pch=16, col="blue", lty=1, main=NA, ylab=NA, xlab="Size [Bp]",
+       ylim=c(1,100000), cex=0.7, cex.lab=1.3, cex.main=1.8, 
+       xlim=c(round(min(pindel.alt.InsDels, -9900)-100, -2), round(max(platypus.alt.InsDels, 500)+100, -2)))
+  lines(hist.platypus.sizes$counts~hist.platypus.sizes$mids, type="l",
+        lwd=rep(2,2), pch=16, cex=0.7, col="red", lty=2)
+  options(warn=0)
+  legend("topleft", legend=c("cgpPindel", "Platypus"), col=c("blue", "red"), lty=c(1,1), lwd=c(2,2), cex=1.2)
+  
+  # Add Title
+  mtext(paste0("INDEL-Sizes - ", sample, " - on Chr. ", chromosome), 
+        side = 3, outer = T, cex = 2.5)
+  dev.off()
+  
+  
+  ## c. In case wanted: Box-Plot
+  
+  if(boxplot == "Y"){
+    pdf(paste0("Size_Boxplot_", sample, "_chr", chromosome, ".pdf"), width=10, height=8)
+    boxplot(list(platypus.alt.InsDels, pindel.alt.InsDels),
+            main=paste0("INDEL-Sizes - ", sample, " - on Chr. ", chromosome), cex.main=1.8,
+            outline = T, names=c("Platypus", "cgpPindel"), outcol=c(rgb(1,0,0,0.05),rgb(0,0,1,0.05)),
+            pch=rep(16,2), cex=1.2, ylab="Size [Bp]", xlab="Variant Caller", cex.lab=1.3)
+    dev.off()
+    
+    # For additional fancyness (but only for very few calls!)#  
+    # beeswarm(list(platypus.alt.InsDels[1:200], pindel.alt.InsDels[1:200]), 
+    # add=T, pch=rep(16,16), col=2:3, bg="#00000050", 
+    # cex=0.7, corral='random')
+  }
+  
+  ## d. In case wanted: Particular Length of all Insertions and Deletions
+  
+  if(venns == "Y"){
+    # For efficient memory storage
+    pindel.vcf[,1] <- paste(pindel.vcf[,1], pindel.vcf[,2], sep="_")
+    platypus.vcf[,1] <- paste(platypus.vcf[,1], platypus.vcf[,2], sep="_") 
+    
+    # cgpPindel
+    pindel.insertions <- which(pindel.alt.InsDels>0)
+    pindel.insertions <- pindel.vcf[pindel.insertions,]
+    pindel.insertions.n <- length(pindel.insertions[,1])
+    
+    pindel.deletions <- which(pindel.alt.InsDels<0)
+    pindel.deletions <- pindel.vcf[pindel.deletions,]
+    pindel.deletions.n <- length(pindel.deletions[,1])
+    
+    # Platypus  
+    platypus.insertions <- which(platypus.alt.InsDels>0)
+    platypus.insertions <- platypus.vcf[platypus.insertions,]
+    platypus.insertions.n <- length(platypus.insertions[,1])
+    
+    platypus.deletions <- which(platypus.alt.InsDels<0)
+    platypus.deletions <- platypus.vcf[platypus.deletions,]  
+    platypus.deletions.n <- length(platypus.deletions[,1])
+    
+    # Intersect
+    both.dels <- intersect(pindel.deletions[,"Contig"],platypus.deletions[,"Contig"])
+    both.dels.n <- length(both.dels)
+    both.ins <- intersect(pindel.insertions[,"Contig"],platypus.insertions[,"Contig"])
+    both.ins.n <- length(both.ins)
+    
+    
+    ## e. In case wanted: Prepare additional Venns
+    
+    # Percentages Deletions
+    if(pindel.deletions.n!=both.dels.n){
+      pindel.del.perc <- 100*round(1-(both.dels.n/pindel.deletions.n),3)
+    }else if(pindel.deletions.n==both.dels.n){
+      pindel.del.perc <- 100
+    }
+    
+    if(platypus.deletions.n!=both.dels.n){
+      platypus.del.perc <- 100*round(1-(both.dels.n/platypus.deletions.n),3)
+    }else if(platypus.deletions.n==both.dels.n){
+      platypus.del.perc <- 100
+    }
+    
+    # Percentages Insertions
+    if(pindel.insertions.n!=both.ins.n){
+      pindel.ins.perc <- 100*round(1-(both.ins.n/pindel.insertions.n),3)
+    }else if(pindel.insertions.n==both.ins.n){
+      pindel.ins.perc <- 100
+    }
+    
+    if(platypus.insertions.n!=both.ins.n){
+      platypus.ins.perc <- 100*round(1-(both.ins.n/platypus.insertions.n),3)
+    }else if(platypus.insertions.n==both.ins.n){
+      platypus.ins.perc <- 100
+    }  
+    
+    
+    ## e. In case wanted: Venn Plots
+    
+    # Venn for Deletions
+    venn.del <- draw.pairwise.venn(area1=pindel.deletions.n,
+                                   area2=platypus.deletions.n,
+                                   cross.area=both.dels.n,
+                                   category = c(paste0("cgpPindel [", pindel.del.perc, " %]"),
+                                                paste0("Platypus [", platypus.del.perc, " %]")),
+                                   fontfamily = rep("sans", 3), cat.fontfamily = "sans",
+                                   fill = c("blue", "orange"), euler.d=TRUE, scaled=TRUE, 
+                                   ind = FALSE, cex=1.3, cat.cex=0.6)
+    
+    pdf(paste0("Del_", sample, "_chr", chromosome, ".pdf"), width=8,height=8)
+    grid.arrange(gTree(children=venn.del), 
+                 main=textGrob(paste0("Deletion-Overlap - ", sample, " - on Chr. ", chromosome), 
+                               gp=gpar(cex=2.5),
+                               just="top"))
+    dev.off()
+    
+    # Venn for Insertions
+    venn.ins <- draw.pairwise.venn(area1=pindel.insertions.n,
+                                   area2=platypus.insertions.n,
+                                   cross.area=both.ins.n,
+                                   category = c(paste0("cgpPindel [", pindel.ins.perc, " %]"),
+                                                paste0("Platypus [", platypus.ins.perc, " %]")),
+                                   fontfamily = rep("sans", 3), cat.fontfamily = "sans",
+                                   fill = c("blue", "orange"), euler.d=TRUE, scaled=TRUE, 
+                                   ind = FALSE, cex=1.3, cat.cex=0.6)
+    
+    pdf(paste0("Ins_", sample, "_chr", chromosome, ".pdf"), width=8,height=8)
+    grid.arrange(gTree(children=venn.ins), 
+                 main=textGrob(paste0("Insertion-Overlap - ", sample, " - on Chr. ", chromosome), 
+                               gp=gpar(cex=2.5), 
+                               just="top"))
+    dev.off()    
+  }
+
+}
+
+
+# 3. Taking the Overlap of two different VCF Inputs
+overlap.vcf <- function(pindel.vcf, 
+                        platypus.vcf){
+  
+  
+  # a. Merge Contig & Position for memory-efficient Filtering
+  
+  pindel.vcf[,1] <- paste(pindel.vcf[,1], pindel.vcf[,2], sep="_")
+  platypus.vcf[,1] <- paste(platypus.vcf[,1], platypus.vcf[,2], sep="_")
+  
+  
+  # b. Remove multiple Calls on single Positions
+  
+  doubles.pindel <- duplicated(pindel.vcf[,"Contig"])
+  if (any(doubles.pindel==T)){
+    pindel.vcf <- pindel.vcf[-which(doubles.pindel==T),]
+  }
+  doubles.platypus <- duplicated(platypus.vcf[,"Contig"])
+  if (any(doubles.platypus==T)){
+    platypus.vcf <- platypus.vcf[-which(doubles.platypus==T),]    
+  }
+  
+  
+  # c. Build Overlap Sets
+  both <- c()
+  both <- intersect(pindel.vcf[,"Contig"], platypus.vcf[,"Contig"])
+  pindel.vcf <- pindel.vcf[match(both,pindel.vcf[,"Contig"]),]
+  platypus.vcf <- platypus.vcf[match(both,platypus.vcf[,"Contig"]),]
+   
+  
+  # d. Change "Contig"-Column back to original state
+  
+  pindel.tmp <- matrix(NA, nrow = length(pindel.vcf[,"Contig"]), ncol = 4)
+  platypus.tmp <- matrix(NA, nrow = length(platypus.vcf[,"Contig"]), ncol = 4)
+  
+  pindel.tmp <- str_split_fixed(pindel.vcf[,"Contig"],"_", 4)
+  pindel.vcf[,1] <- paste(pindel.tmp[,1],pindel.tmp[,2],pindel.tmp[,3],sep="_")
+  platypus.tmp <- str_split_fixed(platypus.vcf[,"Contig"],"_", 4)
+  platypus.vcf[,1] <- paste(platypus.tmp[,1],platypus.tmp[,2],platypus.tmp[,3],sep="_")
+  
+  
+  # e. Output
+  return(list("Pindel" = pindel.vcf,
+              "Platypus" = platypus.vcf))
+
+}
+
+
+# 4. Filtering out Calls with bad Pindel Quality
+pindel.filter <- function(overlap, threshold){
+  
+  
+  # a. Higher than the Threshold
+  pindel.qualities <- overlap$"Pindel"[,"Quality"]
+  pass <- pindel.qualities>=threshold
+  
+  
+  # b. Take them off the Pindel and Playpus Set (in case the filter threshold is high enough)
+  if(length(which(pass==F))!=0){
+    overlap$"Pindel" <- overlap$"Pindel"[-which(pass==F),]
+    overlap$"Platypus" <- overlap$"Platypus"[-which(pass==F),]
+  }
+  
+  # c. Output
+  return(overlap)
+}
+
+
+# 5. Filtering out Calls with bad Platypus Quality
+platypus.filter <- function(overlap, threshold){
+  
+  
+  # a. Hard Quality Threshold
+  
+  platypus.qualities <- overlap$"Platypus"[,"Quality"]
+  high.quality.pass <- which(platypus.qualities>=threshold)
+  
+  
+  # b. Soft Quality "PASS" and 75 % Threshold
+  
+  soft.threshold <- 0.75*threshold
+  platypus.filter <- as.character(overlap$"Platypus"[,"Filter"])
+  filter.pass <- grep("PASS", platypus.filter)
+  
+  low.quality.pass.bottom <- which(platypus.qualities>=soft.threshold)
+  low.quality.pass.top <- which(platypus.qualities<threshold)
+  low.quality.pass <- intersect(low.quality.pass.bottom, low.quality.pass.top)
+  
+  # Take the overlapping Set from "PASS" flags and soft Quality Escapers 
+  low.quality.pass <- intersect(filter.pass, low.quality.pass)
+
+  
+  # c. Concatenate the two sets
+  pass <- c(low.quality.pass, high.quality.pass)
+  pass <- sort(pass)
+  
+  
+  # d. Take them off the Pindel and Playpus Set
+  if(length(which(pass==T))!=0){
+    overlap$"Pindel" <- overlap$"Pindel"[pass,]
+    overlap$"Platypus" <- overlap$"Platypus"[pass,]
+  }
+
+  
+  # e. Output
+  return(overlap)
+}
+
+
+# 6. Extract Lengths of all Contigs
+contig.sizes <- function(x){
+  
+  
+  # a. Order and pre-process the contig-lengths
+  
+  contig.lengths <- read.table("/Users/ms37/Desktop/Data/Info-Files/Ref7.0.txt", header=T)[,c(2:3)]
+  contig.lengths[,"UCSC"] <- sub("ChrU", "ChrZ", contig.lengths[,"UCSC"])
+  contig.lengths <- contig.lengths[order(as.character(contig.lengths[,1])),]
+  contig.lengths[,"UCSC"] <- sub("ChrZ", "ChrU", contig.lengths[,"UCSC"])
+  contig.lengths <- cbind(contig.lengths, rep(NA, length(contig.lengths[,1])))
+  colnames(contig.lengths) <- c("Contig", "Length", "Chromosome_Position")
+  
+  # Remove Mitochondrial Contig
+  contig.lengths <- contig.lengths[-length(contig.lengths[,1]),]
+  
+  
+  # b. Add the Positions
+  
+  # All Contigs on all Chromosomes
+  
+  chr1.contigs <- grep("Chr1", contig.lengths[,"Contig"])
+  chr2.contigs <- grep("Chr2", contig.lengths[,"Contig"])
+  chr3.contigs <- grep("Chr3", contig.lengths[,"Contig"])
+  chr4.contigs <- grep("Chr4", contig.lengths[,"Contig"])
+  chr5.contigs <- grep("Chr5", contig.lengths[,"Contig"])
+  chr6.contigs <- grep("Chr6", contig.lengths[,"Contig"])
+  chrx.contigs <- grep("Chrx", contig.lengths[,"Contig"])
+  chrU.contigs <- grep("ChrU", contig.lengths[,"Contig"])
+  
+  
+  # c. Sum up the Ranges
+  
+  contig.lengths[chr1.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chr1.contigs,"Length"])
+  contig.lengths[chr2.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chr2.contigs,"Length"])
+  contig.lengths[chr3.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chr3.contigs,"Length"])
+  contig.lengths[chr4.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chr4.contigs,"Length"])
+  contig.lengths[chr5.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chr5.contigs,"Length"])
+  contig.lengths[chr6.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chr6.contigs,"Length"])
+  contig.lengths[chrx.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chrx.contigs,"Length"])
+  contig.lengths[chrU.contigs,"Chromosome_Position"] <- cumsum(contig.lengths[chrU.contigs,"Length"])
+  
+  
+  # d. Output
+  
+  write.table(contig.lengths, "/Users/ms37/Desktop/Data/Info-Files/Ref7.1_ContigPositions.txt", row.names=F)
+  return(contig.lengths)
+  
+}
+
+
+# 7. Get raw INDEL-densities on Chromosome
+indel.summary <- function(contig.sizes, platypus.call.vcf, pindel.call.vcf){
+  
+  # a. Pre-allocate a Matrix with two Columns, filled with the actual Positions
+  
+  hits <- matrix(NA, ncol = 7, nrow = length(platypus.call.vcf[,1]))
+  colnames(hits) <- c("Contig", "Contig Position", "Chromosome Position", "Type", "Length", "Platypus_Calls", "Pindel_Calls")
+  
+  
+  # b. Take Data from original Output
+  
+  hits[,"Contig"] <- as.character(platypus.call.vcf[,"Contig"])
+  hits[,"Contig Position"] <- platypus.call.vcf[,"Position"]
+  hits[,"Length"] <- nchar(as.character(platypus.call.vcf[,"Pattern"]))-nchar(as.character(platypus.call.vcf[,3]))
+  hits[,"Platypus_Calls"] <- as.character(platypus.call.vcf[,"Tumour"])
+  split <- matrix(NA, nrow = length(hits[,"Platypus_Calls"]), ncol = 6)
+  split <- str_split_fixed(hits[,"Platypus_Calls"], ":", n=6)
+  hits[,"Platypus_Calls"] <- paste(split[,6],split[,5], sep="/")
+  hits[,"Pindel_Calls"] <- as.character(pindel.call.vcf[,"Tumour"])
+  rm(split)
+  split <- matrix(NA, nrow = length(hits[,"Pindel_Calls"]), ncol = 10)
+  split <- str_split_fixed(hits[,"Pindel_Calls"], ":", n=10)
+  hits[,"Pindel_Calls"] <- paste(as.numeric(split[,2])+
+                                 as.numeric(split[,3]), 
+                                 as.numeric(split[,8])+
+                                 as.numeric(split[,9]), sep="/")
+
+  
+  # c. Exchange chromosomal for genomic Position
+  
+  # Take 000000-contig into account? Usually yes, add no extra sizes to these
+  if(length(grep("000000000",unique(hits[,"Contig"])[1]))!=0){
+    starters <- which(hits[,"Contig"]==unique(hits[,"Contig"])[1])
+    match.contigs.lengths <- match(hits[-starters,"Contig"],contig.sizes[,"Contig"])
+    
+    # Update Starters
+    hits[starters,"Chromosome Position"] <- hits[starters,"Contig Position"]
+    
+    # Update non-Starters
+    hits[-starters,"Chromosome Position"] <- as.numeric(hits[-starters,"Contig Position"])+
+      contig.sizes[match.contigs.lengths-1,"Chromosome_Position"]
+ 
+  }else{
+    match.contigs.lengths <- match(hits[,"Contig"],contig.sizes[,"Contig"])
+    
+    # Update all positions
+    hits[,"Chromosome Position"] <- as.numeric(hits[,"Contig Position"])+
+      contig.sizes[match.contigs.lengths-1,"Chromosome_Position"]
+  }
+   
+  
+  # d. Define INDEL-type
+  
+  call.ref.lenghts <- nchar(as.character(platypus.call.vcf[,3]))
+  call.alt.lenghts <- nchar(as.character(platypus.call.vcf[,4]))
+  call.alt.InsDels <- call.alt.lenghts-call.ref.lenghts
+  call.insertions <- which(call.alt.InsDels>0)
+  call.deletions <- which(call.alt.InsDels<0)
+  
+  hits[call.insertions,"Type"] <- "I"
+  hits[call.deletions,"Type"] <- "D"
+  
+  # e. Output
+  return(hits)
+}
+
+
+# 8. Raw INDEL-density Plot on Chromosome
+indel.density.plot <- function(hits, used.contigs, contig.lengths, genes, sample, chromosome){
+  
+  # a. Preparation
+  setwd(paste0(Home,"/Output/", sample))  
+  full.chr.length <- contig.lengths[last(grep(paste0("Chr",chromosome), contig.lengths[,1])),"Chromosome_Position"]
+  
+  
+  # b. Create Gene Annotations
+  genes.coords <- cbind(rep(genes[,"Gene.Start"],2), rep(genes[,"Gene.End"],2))
+  genes.coords <- apply(genes.coords, 1, function(x) (x[1]+x[2])/2)
+  # using "mean-function" was 5x slower
+  # system.time(genes.coords <- apply(genes.coords, 1, mean)) # 0.192 compared to 0.035 sec (above)
+  
+  # c. Plotting
+  pdf(paste0("Density_", sample, "_chr", chromosome, ".pdf"), width=15,height=8)
+  
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  
+  # Empty Chromosome String
+  empty <- c(1, full.chr.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Genes", xlab="Position [Bp]", cex.lab=1.7,
+       main=paste0("INDEL-Density - ", sample, " - on Chr. ", chromosome), cex.main=1.8, 
+       ylim=c(0,2), yaxt="n", col="white")
+  
+  
+  # Add genes and corresponding Annotations
+  points(x=genes.coords, y=rep(1,length(genes.coords)), col=rgb(0.1,0.1,0.1,0.05), pch=3,
+         cex=7)
+  
+  # Alpha
+  # alpha.ins <- use some polynomial fit for alpha-correcture
+  
+  # All Insertions
+  ins.pos <- as.integer(hits[which(hits[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- rep(1.3, length(ins.pos))
+  points(x=ins.pos, y=ins.height, cex=2, pch=18, col=rgb(1,0,0,0.01))
+  
+  # All Deletions  
+  dels.pos <- as.integer(hits[which(hits[,"Type"]=="D"),"Chromosome Position"])
+  dels.height <- rep(0.7, length(dels.pos))
+  alpha.adjust <- length(ins.height)/length(dels.height)
+  points(x=dels.pos, y=dels.height, cex=2, pch=18, col=rgb(0,0,1,0.01*alpha.adjust))
+  
+  # Legend
+  legend("topleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=18, lwd=2, cex=2, pt.cex=2, bty="n")
+  dev.off() 
+}
+
+
+# 9. Rainfall Plot on Chromosome
+indel.rainfall.plot <- function(hits, sample, chromosome, contig.lengths = contig.size,
+                                individuals = "Y"){
+  
+  # a. Take all Distances
+  
+  names <- colnames(hits)
+  hits <- cbind(hits, c(0,diff(as.integer(hits[,"Chromosome Position"]))))
+  colnames(hits) <- c(names, "Indel Distances")
+  hits <- hits[,c("Chromosome Position", "Indel Distances", "Type")]
+  full.chr.length <- contig.lengths[last(grep(paste0("Chr",chromosome), contig.lengths[,1])),"Chromosome_Position"]
+  
+  
+  # b. Rainfall Plots
+  setwd(paste0(Home,"/Output/", sample))
+  pdf(paste0("Rainfall_", sample, "_chr", chromosome, ".pdf"), width=18,height=12)
+  par(mfrow=c(2,1))
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  
+  # Shared Rainfall Plots
+  
+  # Shared, relative distance
+  plot(x=which(hits[,"Type"]=="D")[-1], 
+       y=as.numeric(hits[which(hits[,"Type"]=="D"),2])[-1], ylab="Intermutation Distances", xlab="Indel Number",
+       pch=16, cex=0.6, log="y", main=paste0("Indels: Relative Rainfall-Plot - ", sample, " - on Chr. ", chromosome), 
+       cex.main=1.8, cex.lab=1.3,yaxt="n", col=rgb(0,0,1,0.5), xlim=c(0,length(hits[,1])), ylim=c(10,1000000))
+  
+  points(x=which(hits[,"Type"]=="I")[-1], 
+         y=as.numeric(hits[which(hits[,"Type"]=="I"),2])[-1],
+         pch=16, cex=0.6, col=rgb(1,0,0,0.5))
+  
+  # Legend and X-axis
+  axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+  legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+       pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+  
+  # Shared, genomic distance
+  plot(x=as.numeric(hits[which(hits[,"Type"]=="D"),1])[-1], 
+     y=as.numeric(hits[which(hits[,"Type"]=="D"),2])[-1], ylab="Intermutation Distances", xlab="Chromosomal Distance",
+     pch=16, cex=0.6, log="y", main=paste0("Indels: Chromosomal Rainfall-Plot - ", sample, " - on Chr. ", chromosome), 
+     cex.main=1.8, cex.lab=1.3,yaxt="n", col=rgb(0,0,1,0.5), xlim=c(0,full.chr.length), ylim=c(10,1000000))
+  
+  points(x=as.numeric(hits[which(hits[,"Type"]=="I"),1])[-1], 
+       y=as.numeric(hits[which(hits[,"Type"]=="I"),2])[-1],
+       pch=16, cex=0.6, col=rgb(1,0,0,0.5))
+  
+  # Legend and X-axis 
+  axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+  legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+  
+  if(individuals == "N"){
+    dev.off()
+    
+  }else if(individuals == "Y"){
+    # Single Rainfall-Plots
+    
+    # Insertions, relative distance
+    plot(x=which(hits[,"Type"]=="I")[-1], 
+         y=as.numeric(hits[which(hits[,"Type"]=="I"),2])[-1], ylab="Intermutation Distances", xlab="Indel Number",
+         pch=16, cex=0.6, log="y", main=paste0("Insertions: Relative Rainfall-Plot - ", sample, " - on Chr. ", chromosome), 
+         cex.main=1.8, cex.lab=1.3,yaxt="n", col=rgb(1,0,0,0.5), xlim=c(0,length(hits[,1])), ylim=c(10,1000000))
+    
+    # Legend and X-axis
+    axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+    legend("bottomleft", legend=c("Insertions"), col=rgb(1,0,0,0.8), 
+           pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+    
+    # Insertions, genomic distance
+    plot(x=as.numeric(hits[which(hits[,"Type"]=="I"),1])[-1], 
+         y=as.numeric(hits[which(hits[,"Type"]=="I"),2])[-1], ylab="Intermutation Distances", xlab="Chromosomal Distance",
+         pch=16, cex=0.6, log="y", main=paste0("Insertions: Chromosomal Rainfall-Plot - ", sample, " - on Chr. ", chromosome), 
+         cex.main=1.8, cex.lab=1.3,yaxt="n", col=rgb(1,0,0,0.5), xlim=c(0,full.chr.length), ylim=c(10,1000000))
+    
+    # Legend and X-axis 
+    axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+    legend("bottomleft", legend=c("Insertions"), col=rgb(1,0,0,0.8), 
+           pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+    
+    # Deletions, relative distance
+    plot(x=which(hits[,"Type"]=="D")[-1], 
+         y=as.numeric(hits[which(hits[,"Type"]=="D"),2])[-1], ylab="Intermutation Distances", xlab="Indel Number",
+         pch=16, cex=0.6, log="y", main=paste0("Deletions: Relative Rainfall-Plot - ", sample, " - on Chr. ", chromosome), 
+         cex.main=1.8, cex.lab=1.3,yaxt="n", col=rgb(0,0,1,0.5), xlim=c(0,length(hits[,1])), ylim=c(10,1000000))
+    
+    # Legend and X-axis
+    axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+    legend("bottomleft", legend=c("Deletions"), col=rgb(0,0,1,0.8), 
+           pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+    
+    # Deletions, genomic distance
+    plot(x=as.numeric(hits[which(hits[,"Type"]=="D"),1])[-1], 
+         y=as.numeric(hits[which(hits[,"Type"]=="D"),2])[-1], ylab="Intermutation Distances", xlab="Chromosomal Distance",
+         pch=16, cex=0.6, log="y", main=paste0("Deletions: Chromosomal Rainfall-Plot - ", sample, " - on Chr. ", chromosome), 
+         cex.main=1.8, cex.lab=1.3,yaxt="n", col=rgb(0,0,1,0.5), xlim=c(0,full.chr.length), ylim=c(10,1000000))
+    
+    # Legend and X-axis 
+    axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+    legend("bottomleft", legend=c("Deletions"), col=rgb(0,0,1,0.8), 
+           pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+    
+    dev.off()  
+  }
+}
+
+
+# 10. Bi-allelic Frequency Plot
+indel.baf.plot <- function(hits, contig.lengths, sample, chromosome, pindel = "N"){
+ 
+  
+  # a. Preparation
+  
+  setwd(paste0(Home,"/Output/", sample))
+  full.chr.length <- contig.lengths[last(grep(paste0("Chr",chromosome), contig.lengths[,1])),"Chromosome_Position"]
+  
+  
+  # b. Calculate the Ratios (Platypus)
+
+  hits.pindel <- hits.platypus <- hits
+  
+  # Remove ambiguous calls from BAF analysis
+  platypus.call <- str_split_fixed(hits.platypus[,"Platypus_Calls"], "/", n=2)[,1]
+  hits.platypus <- hits.platypus[-grep(",", platypus.call),]
+  platypus.call <- str_split_fixed(hits.platypus[,"Platypus_Calls"], "/", n=2)[,1]
+  platypus.cov <- str_split_fixed(hits.platypus[,"Platypus_Calls"], "/", n=2)[,2] 
+  platypus.call <- as.numeric(platypus.call)
+  platypus.cov <- as.numeric(platypus.cov)
+  platypus.baf <- platypus.call/platypus.cov
+  hits.platypus[,"Platypus_Calls"] <- platypus.baf
+  
+  
+  # b. Calculate the Ratios (cgpPindel)
+  
+  pindel.call <- str_split_fixed(hits.pindel[,"Pindel_Calls"], "/", n=2)[,1]
+  pindel.cov <- str_split_fixed(hits.pindel[,"Pindel_Calls"], "/", n=2)[,2] 
+  pindel.call <- as.numeric(pindel.call)
+  pindel.cov <- as.numeric(pindel.cov)
+  pindel.baf <- pindel.call/pindel.cov
+  hits.pindel[,"Pindel_Calls"] <- pindel.baf
+  
+  
+  # c. Actual BAF-Plots
+  if(pindel == "N"){
+    
+    pdf(paste0("BAF_", sample, "_chr", chromosome, ".pdf"), width=18,height=7)
+    mar.default <- c(5,4,4,2) + 0.1
+    par(mar = mar.default + c(0, 5, 0, 0)) 
+    
+    ## Platypus
+    
+    # Empty Chromosome String
+    empty <- c(1, full.chr.length)
+    plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Position [Bp]", cex.lab=1.3,
+         main=paste0("Platypus-called BAF - ", sample, " - on Chr. ", chromosome), cex.main=1.8, ylim=c(0,1),
+         col="white", yaxt="n")
+    axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+    
+    # All Insertions
+    ins.pos <- as.integer(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Chromosome Position"])
+    ins.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Platypus_Calls"]) 
+    points(x=ins.pos, y=ins.height, cex=0.8, pch=16, col=rgb(1,0,0,0.5))
+    
+    # All Deletions  
+    dels.pos <- as.integer(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Chromosome Position"])
+    dels.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Platypus_Calls"]) 
+    alpha.adjust <- length(ins.height)/length(dels.height)
+    points(x=dels.pos, y=dels.height, cex=0.8, pch=16, col=rgb(0,0,1,0.5))
+    
+    # Legend
+    legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+           pch=16, cex=1.5, pt.cex=2, bty="o", bg="white") 
+    
+    dev.off()
+    
+  }else if(pindel == "Y"){
+    
+    pdf(paste0("BAF_", sample, "_chr", chromosome, ".pdf"), width=18,height=14)
+    par(mfrow=c(2,1))
+    mar.default <- c(5,4,4,2) + 0.1
+    par(mar = mar.default + c(0, 5, 0, 0)) 
+    
+    ## Platypus
+    
+    # Empty Chromosome String
+    empty <- c(1, full.chr.length)
+    plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Position [Bp]", cex.lab=1.3,
+         main=paste0("Platypus-called BAF - ", sample, " - on Chr. ", chromosome), cex.main=1.8, ylim=c(0,1),
+         col="white", yaxt="n")
+    axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+    
+    # All Insertions
+    ins.pos <- as.integer(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Chromosome Position"])
+    ins.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Platypus_Calls"]) 
+    points(x=ins.pos, y=ins.height, cex=0.8, pch=16, col=rgb(1,0,0,0.5))
+    
+    # All Deletions  
+    dels.pos <- as.integer(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Chromosome Position"])
+    dels.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Platypus_Calls"]) 
+    alpha.adjust <- length(ins.height)/length(dels.height)
+    points(x=dels.pos, y=dels.height, cex=0.8, pch=16, col=rgb(0,0,1,0.5))
+    
+    # Legend
+    legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+           pch=16, cex=1.5, pt.cex=2, bty="o", bg="white") 
+    
+    
+    ## Pindel
+    
+    # Empty Chromosome String
+    empty <- c(1, full.chr.length)
+    plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Position [Bp]", cex.lab=1.3,
+         main=paste0("cgpPindel-called BAF - ", sample, " - on Chr. ", chromosome), cex.main=1.8, ylim=c(0,1), yaxt="n",
+         col="white", yaxt="n")
+    axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+    
+    # All Insertions
+    ins.pos <- as.integer(hits.pindel[which(hits.pindel[,"Type"]=="I"),"Chromosome Position"])
+    ins.height <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="I"),"Pindel_Calls"]) 
+    points(x=ins.pos, y=ins.height, cex=0.8, pch=16, col=rgb(1,0,0,0.5))
+    
+    # All Deletions  
+    dels.pos <- as.integer(hits.pindel[which(hits.pindel[,"Type"]=="D"),"Chromosome Position"])
+    dels.height <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="D"),"Pindel_Calls"]) 
+    alpha.adjust <- length(ins.height)/length(dels.height)
+    points(x=dels.pos, y=dels.height, cex=0.8, pch=16, col=rgb(0,0,1,0.5))
+    
+    # Legend
+    legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+           pch=16, cex=1.5, pt.cex=2, bty="o", bg="white")
+    
+    dev.off()
+  } 
+}
+
+
+# 11. Extract all Devil Genenames and their Ranges 
+genes.sizes <- function(x, contig.size){
+  
+  
+  # a. Load and pre-process the contig-lengths
+  
+  devil.genes <- read.table("/Users/ms37/Desktop/Data/Info-Files/All_Genes.txt",
+                            sep="\t", strip.white=TRUE, header=T)
+  colnames(devil.genes) <- c("Ensembl Protein Family IDs",
+                             "Transcription Start Site",
+                             "Transcript End",
+                             "Transcript Start",
+                             "Gene End",
+                             "Gene Start",
+                             "Ensembl Gene ID",
+                             "Chromosome Name",
+                             "HGNC IDs")
+  devil.genes <- cbind(devil.genes[,c(8,6,5,4,2,3,7,9,1)])
+  devil.genes <- sapply(devil.genes, format, trim = TRUE)
+  
+  
+  # b. Remove mitochondrial Genes
+  
+  devil.genes <- devil.genes[-c(21485:21498),]
+  
+  
+  # c. Translate the Contignames
+  
+  for (i in 1:length(devil.genes[,1])){
+    print(i)
+    devil.genes[i,1] <- From_GL(all.contigs,as.character(devil.genes[i,1]))
+  }
+  
+  
+  # d. Sort by contig
+  
+  devil.genes <- devil.genes[order(devil.genes[,1], devil.genes[,2]),]
+  
+  
+  # e. Exchange contig for chromosomal Positions
+  
+  cat("\n Updating all Positions. Takes some minutes.")  
+  for (j in c("Chr1", "Chr2", "Chr3", "Chr4", "Chr5", "Chr6", "ChrU", "Chrx")){
+    
+    # For each Chromosome
+    print(j)
+    
+    chr.calls <- grep(j, devil.genes[,1])
+    chr.contigs <- unique(as.character(devil.genes[chr.calls,1]))
+    
+    for (i in 2:length(chr.contigs)){
+      
+      cat("\n", j, "-", i,"/", length(chr.contigs))
+      
+      # Which positions will be updated
+      affected.hits <- which(devil.genes[,1]==chr.contigs[i])
+      
+      # What is the contig "Start-Position" on Chromosome ?
+      contig.position <- which(contig.size[,"Contig"]==chr.contigs[i-1])
+      contig.position <- contig.size[contig.position,"Chromosome_Position"]
+      
+      # Add Position to all Affected Hits
+      devil.genes[affected.hits,"Gene.Start"] <- as.integer(devil.genes[affected.hits,"Gene.Start"])+contig.position 
+      devil.genes[affected.hits,"Gene.End"] <- as.integer(devil.genes[affected.hits,"Gene.End"])+contig.position 
+      devil.genes[affected.hits,"Transcript.Start"] <- as.integer(devil.genes[affected.hits,"Transcript.Start"])+contig.position 
+      devil.genes[affected.hits,"Transcription.Start.Site"] <- as.integer(devil.genes[affected.hits,"Transcription.Start.Site"])+contig.position 
+      devil.genes[affected.hits,"Transcript.End"] <- as.integer(devil.genes[affected.hits,"Transcript.End"])+contig.position 
+      
+    }  
+  }
+  
+  
+  # f. Output
+  setwd(Home)
+  write.table(devil.genes,"All_Genes.adj.txt", row.names=F)
+  
+  return(devil.genes)
+  
+}
+
+
+# 12. Gene for Indel Presence in Genes
+transcript.hits <- function(devil.transcripts, hits, chromosome){
+  
+  
+  # a. Check only against genes from particular Chromosome 
+  
+  devil.transcripts.chr <- devil.transcripts[grep(paste0("Chr", chromosome), devil.transcripts[,1]),]
+  
+  
+  # b. Take the hit-list Position
+  
+  names <- colnames(hits)
+  hits <- cbind(hits, rep(NA, length(hits[,1])), rep(NA, length(hits[,1])), rep(NA, length(hits[,1])), 
+                rep(NA, length(hits[,1])), rep(NA, length(hits[,1])), rep(NA, length(hits[,1])))
+  colnames(hits) <- c(names, "Coding Type", "RNA Type", "Exon/Intron Number", "Strand", "Gene ID", "Transcript ID")
+  
+  
+  # c. Define the Ranges
+  
+  Hit.Ranges <- GRanges(seqnames = Rle(rep(paste0("chr", chromosome), length(hits[,1]))),
+                        ranges = IRanges(start = as.integer(hits[,"Chromosome Position"]), 
+                                         end = as.integer(hits[,"Chromosome Position"])))
+  
+  Target.Ranges <- GRanges(seqnames = Rle(rep(paste0("chr", chromosome), length(devil.transcripts.chr[,1]))),
+                           ranges = IRanges(start = devil.transcripts.chr[,"Start"], 
+                                            end = devil.transcripts.chr[,"End"]))
+  
+  
+  # d. Find Overlaps
+  
+  Overlaps <- findOverlaps(Hit.Ranges, Target.Ranges)
+  Overlaps <- as.matrix(Overlaps)
+  colnames(Overlaps) <- c("Hitsample", "Targetlocation")
+  devil.transcripts.chr <- as.matrix(devil.transcripts.chr)
+
+  
+  # e. Extract the corresponding Values 
+  #options(warn=-1)
+  if(length(as.integer(Overlaps[,1]))>0){
+    for (i in 1:length(as.integer(Overlaps[,1]))){
+      hits[as.integer(Overlaps[i,"Hitsample"]),"Coding Type"] <- devil.transcripts.chr[as.integer(Overlaps[i,"Targetlocation"]),c("Coding.Type")]
+      hits[as.integer(Overlaps[i,"Hitsample"]),"RNA Type"] <- devil.transcripts.chr[as.integer(Overlaps[i,"Targetlocation"]),c("RNA.Type")]
+      hits[as.integer(Overlaps[i,"Hitsample"]),"Exon/Intron Number"] <- devil.transcripts.chr[as.integer(Overlaps[i,"Targetlocation"]),c("Exon.Intron.Number")]
+      hits[as.integer(Overlaps[i,"Hitsample"]),"Strand"] <- devil.transcripts.chr[as.integer(Overlaps[i,"Targetlocation"]),c("Strand")]
+      hits[as.integer(Overlaps[i,"Hitsample"]),"Gene ID"] <- devil.transcripts.chr[as.integer(Overlaps[i,"Targetlocation"]),c("Gene.ID")]
+      hits[as.integer(Overlaps[i,"Hitsample"]),"Transcript ID"] <- devil.transcripts.chr[as.integer(Overlaps[i,"Targetlocation"]),c("Transcript.ID")]    
+    }
+    #options(warn=0)  
+  }
+
+  
+  # e. Shortening the table to variants that were really called
+  
+  hits <- hits[-which(is.na(hits[,"Coding Type"])==T),,drop=F]
+  
+  
+  # f. Output
+  
+  return(hits)
+}
+
+
+# 13. Summarize all Chromosome-wide Data
+indel.summary.full <- function(summary.chr1, summary.chr2, summary.chr3,
+                               summary.chr4, summary.chr5, summary.chr6,
+                               summary.chrx, summary.chrU){
+  
+  
+  # a. Fetch all Calls per Contig
+  summary.full.calls <- rbind(summary.chr1, summary.chr2, summary.chr3,
+                              summary.chr4, summary.chr5, summary.chr6,
+                              summary.chrx, summary.chrU)
+  
+  
+  # b. Output
+  return(summary.full.calls)
+  
+}
+
+
+# 14. Summarize all Chromosome-wide Transcript Hits
+transcript.summary.full <- function(transcripts.chr1, transcripts.chr2, transcripts.chr3,
+                                    transcripts.chr4, transcripts.chr5, transcripts.chr6,
+                                    transcripts.chrx, transcripts.chrU){
+  
+  
+  # a. Fetch all Calls per Contig
+
+  transcripts.full.calls <- rbind(transcripts.chr1, transcripts.chr2,transcripts.chr3,
+                                  transcripts.chr4,transcripts.chr5,transcripts.chr6,
+                                  transcripts.chrx,transcripts.chrU)
+  
+  
+  # b. Output
+  
+  return(transcripts.full.calls)
+}
+
+
+# 15. Genome-wide BAF
+indel.baf.plot.full <- function(hits, used.contigs, contig.lengths, sample,
+                                pindel = "N"){
+
+  # a. Preparation
+  
+  setwd(paste0(Home,"/Output/", sample))
+  
+  # Update Positions in Contig Lengths and Hits - Files
+  contig.lengths[,"Chromosome_Position"] <- cumsum(as.numeric(contig.lengths[,"Length"]))
+  chromosome.edges <- c(1, contig.lengths[max(grep("Chr1", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr2", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr3", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr4", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr5", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr6", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chrx", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("ChrU", contig.lengths[,"Contig"])),"Chromosome_Position"])
+  chromosome.centres <- c(mean(chromosome.edges[1:2]),
+                          mean(chromosome.edges[2:3]),
+                          mean(chromosome.edges[3:4]),
+                          mean(chromosome.edges[4:5]),
+                          mean(chromosome.edges[5:6]),
+                          mean(chromosome.edges[6:7]),
+                          mean(chromosome.edges[7:8])) 
+  
+  hits[grep("Chr2", hits[,"Contig"]),"Chromosome Position"] <- as.integer(hits[grep("Chr2", hits[,"Contig"]),"Chromosome Position"])+
+    contig.lengths[max(grep("Chr1", contig.lengths[,"Contig"])),"Chromosome_Position"]
+  hits[grep("Chr3", hits[,"Contig"]),"Chromosome Position"] <- as.integer(hits[grep("Chr3", hits[,"Contig"]),"Chromosome Position"])+
+    contig.lengths[max(grep("Chr2", contig.lengths[,"Contig"])),"Chromosome_Position"] 
+  hits[grep("Chr4", hits[,"Contig"]),"Chromosome Position"] <- as.integer(hits[grep("Chr4", hits[,"Contig"]),"Chromosome Position"])+
+    contig.lengths[max(grep("Chr3", contig.lengths[,"Contig"])),"Chromosome_Position"]   
+  hits[grep("Chr5", hits[,"Contig"]),"Chromosome Position"] <- as.integer(hits[grep("Chr5", hits[,"Contig"]),"Chromosome Position"])+
+    contig.lengths[max(grep("Chr4", contig.lengths[,"Contig"])),"Chromosome_Position"] 
+  hits[grep("Chr6", hits[,"Contig"]),"Chromosome Position"] <- as.integer(hits[grep("Chr6", hits[,"Contig"]),"Chromosome Position"])+
+    contig.lengths[max(grep("Chr5", contig.lengths[,"Contig"])),"Chromosome_Position"] 
+  hits[grep("Chrx", hits[,"Contig"]),"Chromosome Position"] <- as.integer(hits[grep("Chrx", hits[,"Contig"]),"Chromosome Position"])+
+    contig.lengths[max(grep("Chr6", contig.lengths[,"Contig"])),"Chromosome_Position"]  
+  hits[grep("ChrU", hits[,"Contig"]),"Chromosome Position"] <- as.integer(hits[grep("ChrU", hits[,"Contig"]),"Chromosome Position"])+
+    contig.lengths[max(grep("Chrx", contig.lengths[,"Contig"])),"Chromosome_Position"] 
+  
+  full.length <- as.numeric(hits[length(hits[,1]),"Chromosome Position"])
+  
+  
+  # b. Calculate the Ratios (Platypus)
+  
+  hits.platypus <- hits
+  platypus.call <- str_split_fixed(hits.platypus[,"Platypus_Calls"], "/", n=2)[,1]
+  if(length(grep(",", platypus.call))!=0){
+    hits.platypus <- hits.platypus[-grep(",", platypus.call),] 
+    platypus.call <- str_split_fixed(hits.platypus[,"Platypus_Calls"], "/", n=2)[,1]
+  }
+  platypus.call <- str_split_fixed(hits.platypus[,"Platypus_Calls"], "/", n=2)[,1]
+  platypus.call <- as.integer(platypus.call)
+  platypus.cov <- str_split_fixed(hits.platypus[,"Platypus_Calls"], "/", n=2)[,2]
+  platypus.cov <- as.integer(platypus.cov)
+  platypus.baf <- platypus.call/platypus.cov
+  hits.platypus[,"Platypus_Calls"] <- platypus.baf
+  
+ 
+  # b. Calculate the Ratios (cgpPindel)
+  
+  hits.pindel <- hits
+  pindel.call <- str_split_fixed(hits.pindel[,"Pindel_Calls"], "/", n=2)[,1]
+  pindel.call <- as.integer(pindel.call)
+  pindel.cov <- str_split_fixed(hits.pindel[,"Pindel_Calls"], "/", n=2)[,2]
+  pindel.cov <- as.integer(pindel.cov)
+  pindel.baf <- pindel.call/pindel.cov  
+  hits.pindel[,"Pindel_Calls"] <- pindel.baf
+  
+  # c. Actual BAF-Plots: PDF and PNG
+  
+  # PDF
+  pdf(paste0("BAF_Platypus_", sample, ".pdf"), width=18,height=7)
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  
+  ## Platypus
+  
+  # Empty Chromosome String
+  empty <- c(1, full.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Chromosome", cex.lab=1.3,
+       main=paste0("Platypus-called BAF - ", sample), cex.main=1.8, ylim=c(0,1),
+       col="white", yaxt="n", xaxt="n")
+  axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+  
+  # All Insertions
+  ins.pos <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Platypus_Calls"]) 
+  points(x=ins.pos, y=ins.height, cex=0.3, pch=16, col=rgb(1,0,0,0.5))
+  
+  # All Deletions  
+  dels.pos <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Chromosome Position"])
+  dels.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Platypus_Calls"]) 
+  alpha.adjust <- length(ins.height)/length(dels.height)
+  points(x=dels.pos, y=dels.height, cex=0.3, pch=16, col=rgb(0,0,1,0.5))
+  
+  # Add Chromosomal Edges and Description
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  axis(1, at=chromosome.centres[-8], labels=c("Chr. 1", "Chr. 2", "Chr. 3", "Chr. 4", "Chr. 5",
+                                              "Chr. 6", "Chr. X"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=16, cex=1.5, pt.cex=2, bty="o", bg="white") 
+  
+  dev.off()
+  
+  # PNG
+  
+  png(paste0("BAF_Platypus_", sample, ".png"), width=1350,height=450)
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  
+  ## Platypus
+  
+  # Empty Chromosome String
+  empty <- c(1, full.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Chromosome", cex.lab=1.3,
+       main=paste0("Platypus-called BAF - ", sample), cex.main=1.8, ylim=c(0,1),
+       col="white", yaxt="n", xaxt="n")
+  axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+  
+  # All Insertions
+  ins.pos <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="I"),"Platypus_Calls"]) 
+  points(x=ins.pos, y=ins.height, cex=0.3, pch=16, col=rgb(1,0,0,0.5))
+  
+  # All Deletions  
+  dels.pos <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Chromosome Position"])
+  dels.height <- as.numeric(hits.platypus[which(hits.platypus[,"Type"]=="D"),"Platypus_Calls"]) 
+  alpha.adjust <- length(ins.height)/length(dels.height)
+  points(x=dels.pos, y=dels.height, cex=0.3, pch=16, col=rgb(0,0,1,0.5))
+  
+  # Add Chromosomal Edges and Description
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  axis(1, at=chromosome.centres[-8], labels=c("Chr. 1", "Chr. 2", "Chr. 3", "Chr. 4", "Chr. 5",
+                                              "Chr. 6", "Chr. X"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=16, cex=1.5, pt.cex=2, bty="o", bg="white") 
+  
+  dev.off()
+  
+  
+  ## Pindel
+  if(pindel == "Y"){
+ 
+  pdf(paste0("BAF_Pindel_", sample, ".pdf"), width=18,height=7)
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0))
+    
+  # Empty Chromosome String
+  empty <- c(1, full.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Chromosome [Bp]", cex.lab=1.3,
+       main=paste0("cgpPindel-called BAF - ", sample), cex.main=1.8, ylim=c(0,1), yaxt="n",
+       col="white", xaxt="n")
+  axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+  
+  # All Insertions
+  ins.pos <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="I"),"Pindel_Calls"]) 
+  points(x=ins.pos, y=ins.height, cex=0.3, pch=16, col=rgb(1,0,0,0.5))
+  
+  # All Deletions  
+  dels.pos <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="D"),"Chromosome Position"])
+  dels.height <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="D"),"Pindel_Calls"]) 
+  alpha.adjust <- length(ins.height)/length(dels.height)
+  points(x=dels.pos, y=dels.height, cex=0.3, pch=16, col=rgb(0,0,1,0.5))
+  
+  # Add Chromosomal Edges and Description
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  axis(1, at=chromosome.centres[-8], labels=c("Chr. 1", "Chr. 2", "Chr. 3", "Chr. 4", "Chr. 5",
+                                              "Chr. 6", "Chr. X"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=16, cex=1.5, pt.cex=2, bty="o", bg="white")
+  dev.off()
+  
+  
+  ## Pindel
+  
+  png(paste0("BAF_Pindel_", sample, ".png"), width=1350,height=450)
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  
+  # Empty Chromosome String
+  empty <- c(1, full.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Chromosome", cex.lab=1.3,
+       main=paste0("cgpPindel-called BAF - ", sample), cex.main=1.8, ylim=c(0,1), yaxt="n",
+       col="white", xaxt="n")
+  axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+  
+  # All Insertions
+  ins.pos <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="I"),"Pindel_Calls"]) 
+  points(x=ins.pos, y=ins.height, cex=0.3, pch=16, col=rgb(1,0,0,0.5))
+  
+  # All Deletions  
+  dels.pos <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="D"),"Chromosome Position"])
+  dels.height <- as.numeric(hits.pindel[which(hits.pindel[,"Type"]=="D"),"Pindel_Calls"]) 
+  alpha.adjust <- length(ins.height)/length(dels.height)
+  points(x=dels.pos, y=dels.height, cex=0.3, pch=16, col=rgb(0,0,1,0.5))
+  
+  # Add Chromosomal Edges and Description
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  axis(1, at=chromosome.centres[-8], labels=c("Chr. 1", "Chr. 2", "Chr. 3", "Chr. 4", "Chr. 5",
+                                              "Chr. 6", "Chr. X"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=16, cex=1.5, pt.cex=2, bty="o", bg="white")
+  dev.off()
+  
+  }
+}
+
+
+# 16. Genome-wide Rainfall
+indel.rainfall.plot.full <- function(hits, contig.lengths, sample,
+                                     genomic = "Y"){
+  
+  # a. Take all Distances for all chromosomes
+  
+  indel.distances <- diff(as.integer(hits[,"Contig Position"]))
+  names(indel.distances) <- hits[c(-1),"Type"]
+  chromosome.edges <- c(max(grep("Chr1", hits[,"Contig"])),
+                        max(grep("Chr2", hits[,"Contig"])),
+                        max(grep("Chr3", hits[,"Contig"])),
+                        max(grep("Chr4", hits[,"Contig"])),
+                        max(grep("Chr5", hits[,"Contig"])),
+                        max(grep("Chr6", hits[,"Contig"])),
+                        max(grep("Chrx", hits[,"Contig"])),
+                        max(grep("ChrU", hits[,"Contig"])))
+  full.chr.length <- last(cumsum(as.numeric(contig.lengths[,2])))
+  
+  
+  # b. Split up in insertions/deletions
+  
+  insertions <- indel.distances[which(names(indel.distances)=="I")]
+  deletions <- indel.distances[which(names(indel.distances)=="D")]
+  
+  
+  # c. Plot (PDF & PNG)
+  
+  setwd(paste0(Home,"/Output/", sample))
+  
+  # PDF
+  
+  pdf(paste0("Rainfall_", sample, ".pdf"), width=15, height=6)
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  options(warn=-1)
+  plot(x=which(hits[-1,"Type"]=="D"), 
+       y=deletions, ylab="Intermutation Distances", xlab="Indel Number",
+       pch=16, cex=0.3, log="y", main=paste0("Indels: Relative Rainfall-Plot - ", sample), cex.main=1.8, cex.lab=1.3,
+       yaxt="n", col=rgb(0,0,1,0.5), xlim=c(0,length(hits[,1])), ylim=c(10,1000000))
+  points(x=which(hits[-1,"Type"]=="I"), y=insertions, pch=16, cex=0.3, col=rgb(1,0,0,0.5))
+  axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+
+  # Add lines for each Chromosomal Border
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  
+  # Legend
+  legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+
+  
+  if(genomic == "N"){
+    dev.off()
+    
+  }else if(genomic == "Y"){
+    contig.lengths[,3] <- cumsum(as.numeric(contig.lengths[,2]))
+    hits[grep("Chr2", hits[,1]),3] <- as.numeric(hits[grep("Chr2", hits[,1]),3])+
+      contig.lengths[last(grep(paste0("Chr1"), contig.lengths[,1])),3]
+    hits[grep("Chr3", hits[,1]),3] <- as.numeric(hits[grep("Chr3", hits[,1]),3])+
+      contig.lengths[last(grep(paste0("Chr2"), contig.lengths[,1])),3]
+    hits[grep("Chr4", hits[,1]),3] <- as.numeric(hits[grep("Chr4", hits[,1]),3])+
+      contig.lengths[last(grep(paste0("Chr3"), contig.lengths[,1])),3]
+    hits[grep("Chr5", hits[,1]),3] <- as.numeric(hits[grep("Chr5", hits[,1]),3])+
+      contig.lengths[last(grep(paste0("Chr4"), contig.lengths[,1])),3]
+    hits[grep("Chr6", hits[,1]),3] <- as.numeric(hits[grep("Chr6", hits[,1]),3])+
+      contig.lengths[last(grep(paste0("Chr5"), contig.lengths[,1])),3]
+    hits[grep("Chrx", hits[,1]),3] <- as.numeric(hits[grep("Chrx", hits[,1]),3])+
+      contig.lengths[last(grep(paste0("Chr6"), contig.lengths[,1])),3]
+    hits[grep("ChrU", hits[,1]),3] <- as.numeric(hits[grep("ChrU", hits[,1]),3])+
+      contig.lengths[last(grep(paste0("Chrx"), contig.lengths[,1])),3]
+    
+    # Shared, genomic distance
+    plot(x=as.numeric(hits[which(hits[-1,"Type"]=="D"),3]), 
+         y=deletions, ylab="Intermutation Distances", xlab="Chromosomal Distance",
+         pch=16, cex=0.3, log="y", main=paste0("Indels: Chromosomal Rainfall-Plot - ", sample), 
+         cex.main=1.8, cex.lab=1.3,yaxt="n", col=rgb(0,0,1,0.5), xlim=c(0,full.chr.length), ylim=c(10,1000000))
+    
+    points(x=as.numeric(hits[which(hits[-1,"Type"]=="I"),3]), 
+           y=insertions,
+           pch=16, cex=0.3, col=rgb(1,0,0,0.5))
+    
+    # Legend and X-axis 
+    axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+    legend("bottomleft", legend=c("Insertions", "Deletions"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+           pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+    
+    dev.off()  
+  }
+  
+  options(warn=0)
+}
+
+
+# 17. Rainfall: by Indeltype
+indel.rainfall.plot.types <- function(hits, sample, chromosome){
+
+  
+  # a. Take all Distances
+  
+  indel.distances <- diff(as.integer(hits[,"Chromosome Position"]))
+  names(indel.distances) <- hits[c(-1),"Type"]
+  indel.lengths <- as.integer(hits[c(-1),"Length"])
+  names(indel.lengths) <- hits[c(-1),"Type"]
+
+  
+  # b. Plot: Deletion-Types
+  
+  setwd(paste0(Home,"/Output/", sample))
+  pdf(paste0("RainfallTypes_", sample, "_chr", chromosome, ".pdf"), width=15,height=16)
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mfrow=c(2,1))
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  
+  plot(x=1:length(indel.distances), y=indel.distances, ylab="Intermutation Distances", xlab="Relative Genomic Position",
+       pch=16, cex=0.6, log="y", main=paste0("Rainfall-Deletions - ", sample, " - on Chr. ", chromosome), cex.main=1.8, cex.lab=1.3,
+       yaxt="n", col=rgb(0,0,1,0.0), xlim=c(0,length(indel.distances)), ylim=c(10,1000000))
+  
+  # Deletionsize: >= -1 bp, < -3bp
+  
+  check <- -3 < indel.lengths & indel.lengths <= -1
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="red", cex=0.7)
+  
+  # Deletionsize: > -5 bp, <= -3bp
+  
+  check <- -5 <= indel.lengths & indel.lengths <= -3
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="orange", cex=0.7)
+  
+  # Deletionsize: > -10 bp, <= -5bp
+  
+  check <- -10 <= indel.lengths & indel.lengths < -5
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="yellow", cex=0.7)
+  
+  # Deletionsize: > -20 bp, <= -10bp
+  
+  check <- -20 <= indel.lengths & indel.lengths < -10
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="green", cex=0.7)
+  
+  # Deletionsize: < -20 bp
+  
+  check <- indel.lengths < -20
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="blue", cex=0.7)  
+  axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("1 to 2 bp", "3 to 5 bp","6 to 10 bp","11 to 20 bp","> 20 bp"), 
+         col=c("red", "orange", "yellow", "green", "blue"), pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+  
+  
+  # c. Plot: Insertion-Types
+  
+  plot(1:length(indel.distances), y=indel.distances, ylab="Intermutation Distances", xlab="Relative Genomic Position",
+       pch=16, cex=0.6, log="y", main=paste0("Rainfall-Insertions - ", sample, " - on Chr. ", chromosome), cex.main=1.8, cex.lab=1.3,
+       yaxt="n", col=rgb(0,0,1,0.0), xlim=c(0,length(indel.distances)), ylim=c(10,1000000))
+  
+  # Insertionsize: = 1 bp, < 3bp
+  
+  check <- 1 <= indel.lengths & indel.lengths < 3
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="red", cex=0.7)
+  
+  # Insertionsize: < 5 bp, >= 3bp
+  
+  check <- 3 <= indel.lengths & indel.lengths <= 5
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="orange", cex=0.7)
+  
+  # Insertionsize: < 10 bp, >= 5bp
+  
+  check <- 5 < indel.lengths & indel.lengths <= 10
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="yellow", cex=0.7)
+  
+  # Insertionsize: < 20 bp, >= 10bp
+  
+  check <- 10 < indel.lengths & indel.lengths <= 20
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="green", cex=0.7)
+  
+  # Insertionsize: > 20 bp
+  
+  check <- 20 < indel.lengths 
+  points(x=which(check==T), y=indel.distances[which(check==T)], pch=16,
+         col="blue", cex=0.7)  
+  axis(2, at=c(100, 10000, 1000000), labels=c("100", "10000", "1000000"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("1 to 2 bp", "3 to 5 bp","6 to 10 bp","11 to 20 bp","> 20 bp"), 
+         col=c("red", "orange", "yellow", "green", "blue"), pch=16, cex=1.2, pt.cex=2, bty="o", bg="white")
+  dev.off()
+  
+}
+
+
+# 18. Final Results Statistics
+final.results.plots <- function(final.results){
+  
+  
+  # a. How many Gene Hits / Raw Calls were found - pre-allocate lists
+  
+  total <- exons <- introns <- transcripts <- pindelcalls <- platypuscalls <- overlap <- pindel.filtered <- platypus.filtered <- matrix(0, nrow = length(final.results), ncol = 9)  
+  full <- matrix(0, nrow = length(final.results), ncol = 11)  
+  rownames(total) <- rownames(exons) <- rownames(introns) <- rownames(full) <- rownames(transcripts) <- rownames(pindelcalls) <- rownames(platypuscalls) <- rownames(overlap) <- rownames(pindel.filtered) <- rownames(platypus.filtered) <- names(final.results)
+  colnames(total) <- colnames(exons) <- colnames(introns) <- colnames(transcripts) <- colnames(pindelcalls) <- colnames(platypuscalls) <- colnames(overlap) <- colnames(pindel.filtered) <- colnames(platypus.filtered) <- rownames(final.results[[1]])
+  colnames(full) <- c("Total Unique", "cgpPindel", "Platypus", "Overlap", "cgpPindel-filtered", "Platypus-filtered", "Transcripts", "Exons", "Introns", "Start Codons", "Stop Codons")
+  
+  
+  # b. Run for-loop to extract all the data
+  
+  for (i in 1:length(rownames(transcripts))){
+    total[i,] <- as.integer(final.results[[i]][,"Total Unique"])
+    exons[i,] <- as.integer(final.results[[i]][,"Exons"])
+    introns[i,] <- as.integer(final.results[[i]][,"Introns"])
+    transcripts[i,] <- as.integer(final.results[[i]][,"Transcripts"])
+    pindelcalls[i,] <- as.integer(final.results[[i]][,"Raw cgpPindel"])
+    platypuscalls[i,] <- as.integer(final.results[[i]][,"Raw Platypus"])
+    overlap[i,] <- as.integer(final.results[[i]][,"Overlap"])
+    pindel.filtered[i,] <- as.integer(final.results[[i]][,"Pindel-Quality Filtered"])
+    platypus.filtered[i,] <- as.integer(final.results[[i]][,"Platypus-Quality Filtered"])
+    full[i,] <- final.results[[i]][9,]
+  }
+  
+  
+  # c. Draw the Bar-Plots
+  
+  setwd(paste0(Home, "/Output"))
+  
+  pdf(paste0("Stats_Plots.pdf"), width=15, height=12)
+  
+  ## Full Genome-wide Stats
+  
+  Full.plot <- barplot(full, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                       rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                       rgb(0,0,1,0.5)), main="Genome-wide Filtering Results",
+                       xlab=NA, ylab="Number of Calls", cex.lab=1.3, cex.main=2,
+                       cex.names=0.8)
+  
+  # Add Values
+  text(x=Full.plot, y=full+30000, labels=as.character(full), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend
+  legend("topright",rownames(full),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                          rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                          rgb(0,0,1,0.5)), bty="n", cex=1.8)
+
+  ## Total
+  
+  Total.plot <- barplot(total, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                        rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                        rgb(0,0,1,0.5)), main="Total Unique INDEL Calls",
+                        xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2)
+ 
+  # Add Values
+  text(x=Total.plot, y=total+30000, labels=as.character(total), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend  
+  legend("topleft",rownames(total),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                          rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                          rgb(0,0,1,0.5)), bty="n", cex=1.8)
+  
+  ## Pindelcalls
+  
+  Pindel.plot <- barplot(pindelcalls, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                         rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                         rgb(0,0,1,0.5)), main="Total INDEL Calls with cgpPindel",
+                         xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2,
+                         ylim=c(0, 1000000))
+  
+  # Add Values
+  text(x=Pindel.plot, y=pindelcalls+20000, labels=as.character(pindelcalls), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend    
+  legend("topleft",rownames(pindelcalls),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                                rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                                rgb(0,0,1,0.5)), bty="n", cex=1.8)
+  
+  ## Platypuscalls
+  
+  Platypus.plot <- barplot(platypuscalls, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                           rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                           rgb(0,0,1,0.5)), main="Total INDEL Calls with Platypus",
+                           xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2,
+                           ylim=c(0, 1000000))
+  
+  # Add Values
+  text(x=Platypus.plot, y=platypuscalls+20000, labels=as.character(platypuscalls), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend    
+  legend("topleft",rownames(platypuscalls),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                                  rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                                  rgb(0,0,1,0.5)), bty="n", cex=1.8)
+  
+  ## Overlap
+  
+  Overlap.plot <- barplot(overlap, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                          rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                          rgb(0,0,1,0.5)), main="Total Platypus::cgpPindel Overlap",
+                          xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2)
+  
+  # Add Values
+  text(x=Overlap.plot, y=overlap+8000, labels=as.character(overlap), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend    
+  legend("topleft",rownames(overlap),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                            rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                            rgb(0,0,1,0.5)), bty="n", cex=1.8) 
+    
+  ## Pindel-Quality Filtered
+  
+  Pindelquality.plot <- barplot(pindel.filtered, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                rgb(0,0,1,0.5)), main="Pindel-Quality Filtered INDELs",
+                                xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2)
+  # Add Values
+  text(x=Pindelquality.plot, y=pindel.filtered+3700, labels=as.character(pindel.filtered), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend
+  legend("topleft",rownames(pindel.filtered),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                                    rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                                    rgb(0,0,1,0.5)), bty="n", cex=1.8) 
+    
+  ## Platypus-Quality Filtered
+  
+  Platypusquality.plot <- barplot(platypus.filtered, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                  rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                  rgb(0,0,1,0.5)), main="Platypus-Quality Filtered INDELs",
+                                  xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2)
+  # Add Values
+  text(x=Platypusquality.plot, y=platypus.filtered+3700, labels=as.character(platypus.filtered), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend
+  legend("topleft",rownames(platypus.filtered),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                                      rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                                      rgb(0,0,1,0.5)), bty="n", cex=1.8)
+  
+  ## Transcripts
+  
+  Transcripts.plot <- barplot(transcripts, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                              rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                              rgb(0,0,1,0.5)), main="Total INDEL Calls within Transcripts",
+                              xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2)
+  
+  # Add Values
+  text(x=Transcripts.plot, y=transcripts+400, labels=as.character(transcripts), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend
+  legend("topleft",rownames(transcripts),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                                rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                                rgb(0,0,1,0.5)), bty="n", cex=1.5)
+  
+  ## Exons
+  
+  Exons.plot <- barplot(exons, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                        rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                        rgb(0,0,1,0.5)), main="Total INDEL Calls within Exons",
+                        xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2)
+  
+  # Add Values
+  text(x=Exons.plot, y=exons+20, labels=as.character(exons), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend
+  legend("topleft",rownames(exons),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                          rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                          rgb(0,0,1,0.5)), bty="n", cex=1.8)
+  
+  ## Introns
+  
+  Introns.plot <- barplot(introns, beside = T, col = c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                          rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                          rgb(0,0,1,0.5)), main="Total INDEL Calls within Introns",
+                          xlab="Chromosome", ylab="Number of Calls", cex.lab=1.3, cex.main=2)
+  
+  # Add Values
+  text(x=Introns.plot, y=introns+600, labels=as.character(introns), xpd=TRUE, cex=0.5, srt=90)
+  
+  # Add Legend
+  legend("topleft",rownames(introns),fill=c(rgb(1,0,0,0.5), rgb(1,0,0,1), rgb(1,0,0,0.5), rgb(1,0,0,1),
+                                          rgb(0,0,1,0.5), rgb(0,0,1,1), rgb(0,0,1,1), rgb(0,0,1,1),
+                                          rgb(0,0,1,0.5)), bty="n", cex=1.8)
+  dev.off()
+}
+
+
+# 19. Gene Overlaps ## first need to finish the transcript-hits summary function!!
+shared.indels <- function(hits.1, hits.2, sample1, sample2, contig.lengths, chromosomes = "N"){
+  
+  
+  # a. Update Positions in Contig Lengths and Hits - Files
+  
+  setwd(paste0(Home, "/Output"))
+
+  
+  # b. Check for Overlap between HGNC hits
+  
+  HGNC.hits.1 <- hits.1[[3]]
+  HGNC.hits.2 <- hits.2[[3]]
+  HGNC.hits.1.n <- length(HGNC.hits.1)
+  HGNC.hits.2.n <- length(HGNC.hits.2)
+  
+  HGNC.overlap <- intersect(HGNC.hits.1, HGNC.hits.2)
+  HGNC.overlap.n <- length(HGNC.overlap)
+  
+  
+  # c. Check for Overlap between HGNC hits
+  
+  ENSEMBL.hits.1 <- hits.1[[2]]
+  ENSEMBL.hits.2 <- hits.2[[2]]
+  ENSEMBL.hits.1.n <- length(ENSEMBL.hits.1)
+  ENSEMBL.hits.2.n <- length(ENSEMBL.hits.2)
+  
+  ENSEMBL.overlap <- intersect(ENSEMBL.hits.1, ENSEMBL.hits.2)
+  ENSEMBL.overlap.n <- length(ENSEMBL.overlap)
+  
+  
+  # d. Prepare Names and Percentages
+  
+  hits.1.name <- deparse(substitute(hits.1))
+  hits.2.name <- deparse(substitute(hits.2))
+  
+  
+  # e. Plot Venns for Full Genome (HGNC and ENSEMBL)
+  
+  # Venn for HGNC
+  
+  venn.hgnc <- draw.pairwise.venn(area1=HGNC.hits.1.n,
+                                  area2=HGNC.hits.2.n,
+                                  cross.area=HGNC.overlap.n,
+                                  category = c(sample1,
+                                               sample2),
+                                  fontfamily = rep("sans", 3), cat.fontfamily = "sans",
+                                  fill = c("blue", "orange"), euler.d=TRUE, scaled=TRUE, 
+                                  ind = FALSE, cex=2, cat.cex=1.2)
+  
+  # Venn for ENSEMBL
+  
+  venn.ensembl <- draw.pairwise.venn(area1=ENSEMBL.hits.1.n,
+                                     area2=ENSEMBL.hits.2.n,
+                                     cross.area=ENSEMBL.overlap.n,
+                                     category = c(sample1,
+                                                  sample2),
+                                     fontfamily = rep("sans", 3), cat.fontfamily = "sans",
+                                     fill = c("blue", "orange"), euler.d=TRUE, scaled=TRUE, 
+                                     ind = FALSE, cex=2, cat.cex=1.2)
+  
+  pdf(paste0("shared_transcripts_", sample1, "_", sample2, ".pdf"), width=8,height=8)
+  grid.arrange(gTree(children=venn.hgnc), 
+               main=textGrob(paste0("shared HGNC Calls"), 
+                             gp=gpar(cex=2.5), 
+                             just="top"))
+ 
+  grid.arrange(gTree(children=venn.ensembl), 
+               main=textGrob(paste0("shared ENSEMBL Calls"), 
+                             gp=gpar(cex=2.5), 
+                             just="top"))
+  
+  dev.off()
+  
+  
+  
+  # f. Optionally Plot Venns for each Chromosome
+  # if...
+  
+  return(list(HGNC.overlap.full, ENSEMBL.overlap.full))
+}
+
+
+# 20. Extract all Devil Genenames and their Ranges 
+exon.sizes <- function(x, contig.size){
+  
+  
+  # a. Load and pre-process the contig-lengths
+  
+  devil.exons <- read.table("/Users/ms37/Desktop/Data/Info-Files/All_Exons.adj.txt", header=T, sep=";")
+  devil.exons <- cbind(devil.exons[,c(1:3,9,4:8)])
+  devil.exons <- as.matrix(devil.exons)
+
+  
+  # b. Sort by Contig, put chrU to last position
+  
+  devil.exons[grep("ChrU", devil.exons[,1]),1] <- sub("ChrU", "ChrZ", as.character(devil.exons[grep("ChrU", devil.exons[,1]),1]))
+  devil.exons <- devil.exons[order(devil.exons[,"Contig"], devil.exons[,"Start"]),]
+  devil.exons[grep("ChrZ", devil.exons[,1]),1] <- sub("ChrZ", "ChrU", as.character(devil.exons[grep("ChrZ", devil.exons[,1]),1]))
+  
+  
+  # c. Exchange contig for chromosomal Positions
+  
+  cat("\n Updating all Positions. Takes some minutes.")  
+  for (j in c("Chr1", "Chr2", "Chr3", "Chr4", "Chr5", "Chr6", "Chrx", "ChrU")){
+    
+    # For each Chromosome
+    print(j)
+    
+    chr.calls <- grep(j, devil.exons[,1])
+    chr.contigs <- unique(as.character(devil.exons[chr.calls,1]))
+    
+    if(chr.contigs[1]==paste0(j,"_supercontig_000000000")){
+      
+      for (i in 2:length(chr.contigs)){
+        
+        cat("\n", j, "-", i,"/", length(chr.contigs))
+        
+        # Which positions will be updated
+        affected.hits <- which(devil.exons[,1]==chr.contigs[i])
+        
+        # What is the contig "Start-Position" on Chromosome ?
+        contig.position <- which(contig.size[,"Contig"]==chr.contigs[i])-1 ## Huge BUG: instead of which(contig.size[,"Contig"]==chr.contigs[i-1])
+        contig.position <- contig.size[contig.position,"Chromosome_Position"]
+        
+        # Add Position to all Affected Hits
+        devil.exons[affected.hits,"Start"] <- as.integer(devil.exons[affected.hits,"Start"])+contig.position 
+        devil.exons[affected.hits,"End"] <- as.integer(devil.exons[affected.hits,"End"])+contig.position      
+      }
+      
+    }else if(chr.contigs[1]!=paste0(j,"_supercontig_000000000")){
+      
+      for (i in 1:length(chr.contigs)){
+        
+        cat("\n", j, "-", i,"/", length(chr.contigs))
+        
+        # Which positions will be updated
+        affected.hits <- which(devil.exons[,1]==chr.contigs[i])
+        
+        # What is the contig "Start-Position" on Chromosome ?
+        contig.position <- which(contig.size[,"Contig"]==chr.contigs[i])-1 ## Huge BUG: instead of which(contig.size[,"Contig"]==chr.contigs[i-1])
+        contig.position <- contig.size[contig.position,"Chromosome_Position"]
+        
+        # Add Position to all Affected Hits
+        devil.exons[affected.hits,"Start"] <- as.integer(devil.exons[affected.hits,"Start"])+contig.position 
+        devil.exons[affected.hits,"End"] <- as.integer(devil.exons[affected.hits,"End"])+contig.position      
+      }  
+      
+    }
+   
+  }
+  
+  
+  # d. Remove Whitespace in Position Indicators
+  
+  trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+  devil.exons[,"Start"] <- trim(devil.exons[,"Start"])
+  devil.exons[,"End"] <- trim(devil.exons[,"End"])
+  
+  
+  # e. Output
+  
+  write.table(devil.exons, "/Users/ms37/Desktop/Data/Info-Files/All_Exons.adj3.txt", row.names=F, sep=";")
+  
+  return(devil.exons)
+  
+}
+
+
+# 21. Translate all Possible ENSEMBL IDs to HGNC with BiomaRt
+full.translate <- function(devil.genes){
+  
+  
+  # a. Connect to ENSEMBL Server
+  
+  ensembl <- useMart("ensembl", dataset="sharrisii_gene_ensembl")
+  
+  
+  # b. Prepar Target Matrizes
+  
+  unique.genes <- sort(as.character(unique(devil.exons[,"Gene.ID"])))
+  unique.transcripts <- sort(as.character(unique(devil.exons[,"Transcript.ID"])))
+  gene.translation <- matrix(NA, nrow = length(unique.genes), ncol = 3)
+  transcript.translation <- matrix(NA, nrow = length(unique.transcripts), ncol = 3)
+  colnames(gene.translation) <- colnames(transcript.translation) <- c("ID", "HGNC", "External Name")
+  gene.translation[,1] <- unique.genes
+  transcript.translation[,1] <- unique.transcripts
+  
+  
+  # c. Big MaRt-query for all genes
+ 
+  check.genes <- getBM(attributes=c("ensembl_gene_id", "hgnc_symbol", "external_gene_name"),
+                       filters = c("ensembl_gene_id"),
+                       values = gene.translation[,1],
+                       mart = ensembl)
+  
+  gene.translation[,2] <- as.character(check.genes[,2])
+  gene.translation[,3] <- as.character(check.genes[,3])
+  gene.translation[gene.translation==""] <- NA
+  
+  
+  # d. Big MaRt-query for all transcripts 
+    
+  check.transcripts <- getBM(attributes=c("ensembl_transcript_id", "hgnc_symbol", "external_gene_name"),
+                             filters = c("ensembl_transcript_id"),
+                             values = transcript.translation[,1],
+                             mart = ensembl)
+  
+  transcript.translation[,2] <- as.character(check.transcripts[,2])
+  transcript.translation[,3] <- as.character(check.transcripts[,3])
+  transcript.translation[transcript.translation==""] <- NA
+  
+  
+  # Count succesful queries
+  
+  success.genes <- length(which(gene.translation[,3]!="NA"))
+  success.transcripts <- length(which(transcript.translation[,3]!="NA"))
+  
+  cat("\n \nTranslated Genes: ", success.genes, "/", length(gene.translation[,1]))
+  cat("\n \nTranslated Transcripts: ", success.transcripts, "/", length(transcript.translation[,1]))
+  cat("\nDone.")
+  
+  
+  # Output
+  write.table(gene.translation, file = "/Users/ms37/Desktop/Data/Info-Files/All_Genes.translated.txt",
+              row.names=F, sep=";")
+  write.table(transcript.translation, file = "/Users/ms37/Desktop/Data/Info-Files/All_Transcripts.translated.txt",
+              row.names=F, sep=";")
+  return(list(gene.translation, transcript.translation))
+  
+} 
+
+
+# 22. Translate particular Gene Hits with the Reference
+hits.translate <- function(hits, devil.genes.translation, devil.transcripts.translation, contig.length){
+  
+  
+  # a. Add Colums to hits
+  
+  names <- colnames(hits)
+  hits.translated <- cbind(hits, rep(NA, length(hits[,1])), rep(NA, length(hits[,1])))
+  colnames(hits.translated) <- c(names, "Gene Translation", "Transcript Translation")
+  rownames(devil.genes.translation) <- devil.genes.translation[,1]
+  rownames(devil.transcripts.translation) <- devil.transcripts.translation[,1]
+  
+  
+  # b. Add External Gene and Transcriptname, also in case of NA
+  
+  gene.matches <- match(hits[,"Gene ID"],devil.genes.translation[,"ID"])
+  hits.translated[,"Gene Translation"] <- as.character(devil.genes.translation[gene.matches,"External.Name"])
+  transcript.matches <- match(hits[,"Transcript ID"],devil.transcripts.translation[,"ID"])
+  hits.translated[,"Transcript Translation"] <- as.character(devil.transcripts.translation[transcript.matches,"External.Name"])
+  
+  
+  # c. Merge first and second column, to represent IGV/JBROWSE address
+  
+  hits.translated[,1] <- paste(hits.translated[,1], hits.translated[,2], sep=":")
+  
+  
+  # d. Output
+  
+  return(hits.translated)
+  
+}
+
+
+# 23. Venn with Four Exon-Sets
+DFT2.venn <- function(hits_202T2, hits_203H, hits_203T3, hits_202H1, titulo){
+
+  
+  # a. Extract the Exons
+  
+  hits_202T2 <- hits_202T2[which(hits_202T2[,"RNA Type"]=="exon"),]
+  hits_203H <- hits_203H[which(hits_203H[,"RNA Type"]=="exon"),]
+  hits_203T3 <- hits_203T3[which(hits_203T3[,"RNA Type"]=="exon"),]
+  hits_202H1 <- hits_202H1[which(hits_202H1[,"RNA Type"]=="exon"),]
+  
+  #exons.hits_202T2 <- hits_202T2[,"Gene ID"] <- paste(hits_202T2[,"Gene ID"],hits_202T2[,"Chromosome Position"], sep="_")
+  #exons.hits_203H <- hits_203H[,"Gene ID"] <- paste(hits_203H[,"Gene ID"],hits_203H[,"Chromosome Position"], sep="_")
+  #exons.hits_203T3 <- hits_203T3[,"Gene ID"] <- paste(hits_203T3[,"Gene ID"],hits_203T3[,"Chromosome Position"], sep="_")
+  #exons.hits_202H1 <- hits_202H1[,"Gene ID"] <- paste(hits_202H1[,"Gene ID"],hits_202H1[,"Chromosome Position"], sep="_")
+  
+  
+  # b. Extract all Intersections
+  
+  n12 <- intersect(hits_202T2[,1],hits_203H[,1])
+  n13 <- intersect(hits_202T2[,1],hits_203T3[,1])
+  n14 <- intersect(hits_202T2[,1],hits_202H1[,1])
+  n23 <- intersect(hits_203H[,1],hits_203T3[,1])
+  n24 <- intersect(hits_203H[,1],hits_202H1[,1])
+  n34 <- intersect(hits_203T3[,1],hits_202H1[,1])
+  n123 <- intersect(intersect(hits_202T2[,1],hits_203H[,1]),hits_203T3[,1])
+  n124 <- intersect(intersect(hits_202T2[,1],hits_203H[,1]),hits_202H1[,1])
+  n134 <- intersect(intersect(hits_202T2[,1],hits_203T3[,1]),hits_202H1[,1])
+  n234 <- intersect(intersect(hits_203H[,1],hits_203T3[,1]),hits_202H1[,1])
+  n1234 <- Reduce(intersect, list(hits_202T2[,1],hits_203H[,1],hits_203T3[,1],hits_202H1[,1]))
+  
+  
+  # c. Extract the actual lengths
+  
+  exons.hits_202T2.n <- length(hits_202T2[,1])
+  exons.hits_203H.n <- length(hits_203H[,1])
+  exons.hits_203T3.n <- length(hits_203T3[,1])
+  exons.hits_202H1.n <- length(hits_202H1[,1])
+  n12.n <- length(n12)
+  n13.n <- length(n13)
+  n14.n <- length(n14)
+  n23.n <- length(n23)
+  n24.n <- length(n24)
+  n34.n <- length(n34)
+  n123.n <- length(n123)
+  n124.n <- length(n124)
+  n134.n <- length(n134)
+  n234.n <- length(n234)
+  n1234.n <- length(n1234)
+  
+  
+  # d. Extract the Category Names
+  
+  cat1 <- "202T2"
+  cat2 <- "203H"
+  cat3 <- "203T3"
+  cat4 <- "202H1"
+  
+  
+  # e. Plot Quadrupel-Venn
+  
+  setwd(paste0(Home, "/Output"))
+  pdf(paste0("Exon_Overlap.pdf"), width = 8, height = 8)
+  
+  v <- draw.quad.venn(area1 = exons.hits_202T2.n,
+                 area2 = exons.hits_203H.n,
+                 area3 = exons.hits_203T3.n,
+                 area4 = exons.hits_202H1.n,
+                 n12 = n12.n,
+                 n13 = n13.n,
+                 n14 = n14.n,
+                 n23 = n23.n,
+                 n24 = n24.n,
+                 n34 = n34.n,
+                 n123 = n123.n,
+                 n124 = n124.n,
+                 n134 = n134.n,
+                 n234 = n234.n,
+                 n1234 = n1234.n,
+                 category = c(cat1, cat2, cat3, cat4),
+                 lwd = c(4,4,2,2),
+                 lty = c(3,3,1,1),
+                 col = rep("black", 4),
+                 fill = c("red", "blue", "darkorange", "darkgreen"),
+                 alpha = c(0.7,0.7,0.7,0.7),
+                 cat.cex = rep(1.8,4),
+                 cat.fontfamily = rep("serif", 4),
+                 cex = rep(1.5,15),
+                 fontfamily = rep("serif", 15),
+                 ind=F)
+ 
+  grid.arrange(gTree(children=v), main = textGrob(paste0(titulo), gp = gpar(cex = 2), just = "top"))
+  dev.off()
+  
+  
+  # f. Extract the Corresponding Sets: Germline, Somatic-Tumour-Shared
+    
+  Not_202T2_unique <- intersect(hits_202T2[,1], Reduce(union, list(hits_203H[,1],hits_203T3[,1],hits_202H1[,1])))
+  Tumour_202T2 <- hits_202T2[,1][-match(Not_202T2_unique, hits_202T2[,1])]
+  Tumour_202T2 <- rapply(lapply(Tumour_202T2, function(x) which(hits_202T2[,"Contig"]==x)), function(x) x)
+  Tumour_202T2 <- hits_202T2[Tumour_202T2,]
+  
+  
+  # 203T3
+  
+  Not_203T3_unique <- intersect(hits_203T3[,1], Reduce(union, list(hits_202T2[,1],hits_203H[,1],hits_202H1[,1])))
+  Tumour_203T3 <- hits_203T3[,1][-match(Not_203T3_unique, hits_203T3[,1])]
+  Tumour_203T3 <- rapply(lapply(Tumour_203T3, function(x) which(hits_203T3[,"Contig"]==x)), function(x) x)
+  Tumour_203T3 <- hits_203T3[Tumour_203T3,]
+  
+  # Germline-Panel 
+  
+  Germline <- union(hits_203H[,1],hits_202H1[,1])
+  
+  # Somatic Shared between Tumours ## have to build a new table for comparing calls between the two tumours!
+  # 202T2 # hits_202H1[,1] hits_202T2[,1] hits_203T3[,1] hits_203H[,1]
+
+  Tumour_intersect <- intersect(hits_202T2[,1], hits_203T3[,1])
+  Shared_Somatic <- Tumour_intersect[-sort(unique(match(Germline, Tumour_intersect)))]
+  Shared_202T2 <- rapply(lapply(Shared_Somatic, function(x) which(hits_202T2[,"Contig"]==x)), function(x) x)
+  Shared_202T2 <- hits_202T2[Shared_202T2,]
+  
+  Shared_203T3 <- rapply(lapply(Shared_Somatic, function(x) which(hits_203T3[,"Contig"]==x)), function(x) x)
+  Shared_203T3 <- hits_203T3[Shared_203T3,]
+  
+  names.Shared_Somatic <- colnames(Shared_202T2)
+  names.Shared_Somatic[6:7] <- c("202T2 Platypus Calls", "202T2 Pindel Calls")
+  Shared_Somatic <- cbind(Shared_202T2, Shared_203T3[,c("Platypus_Calls", "Pindel_Calls")])
+  colnames(Shared_Somatic) <- c(names.Shared_Somatic, "203T3 Platypus Calls", "203T3 Pindel Calls")
+  Shared_Somatic <- Shared_Somatic[,c(1:7,16,17,8:15)]
+  
+  
+  # Output
+  
+  return(list("Somatic Shared" = Shared_Somatic,
+              "202T2_unique" = Tumour_202T2,
+              "203T3_unique" = Tumour_203T3,
+              "Germline" = Germline))
+}
+
+
+# 24. BAF Plots for Called Variants
+DFT2.baf <- function(DFT2, contig.lengths){
+  
+  
+  # a. Preparation
+  
+  # Target-Folder
+  setwd(paste0(Home,"/Output/"))
+  
+  
+  # b. Update Positions in Contig Lengths
+  
+  # Contig Lengths
+  contig.lengths[,"Chromosome_Position"] <- cumsum(as.numeric(contig.lengths[,"Length"]))
+  chromosome.edges <- c(1, contig.lengths[max(grep("Chr1", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr2", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr3", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr4", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr5", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chr6", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("Chrx", contig.lengths[,"Contig"])),"Chromosome_Position"],
+                        contig.lengths[max(grep("ChrU", contig.lengths[,"Contig"])),"Chromosome_Position"])
+  
+  chromosome.centres <- c(mean(chromosome.edges[1:2]),
+                          mean(chromosome.edges[2:3]),
+                          mean(chromosome.edges[3:4]),
+                          mean(chromosome.edges[4:5]),
+                          mean(chromosome.edges[5:6]),
+                          mean(chromosome.edges[6:7]),
+                          mean(chromosome.edges[7:8]))
+  
+  # Final Length
+  full.length <- as.numeric(last(chromosome.edges))
+  
+  # Hits
+  
+  # Shared Variants
+  hits.shared <- DFT2[[1]]
+  hits.shared[grep("Chr2", hits.shared[,"Contig"]),"Chromosome Position"] <- as.integer(hits.shared[grep("Chr2", hits.shared[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[2]
+  hits.shared[grep("Chr3", hits.shared[,"Contig"]),"Chromosome Position"] <- as.integer(hits.shared[grep("Chr3", hits.shared[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[3]
+  hits.shared[grep("Chr4", hits.shared[,"Contig"]),"Chromosome Position"] <- as.integer(hits.shared[grep("Chr4", hits.shared[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[4]
+  hits.shared[grep("Chr5", hits.shared[,"Contig"]),"Chromosome Position"] <- as.integer(hits.shared[grep("Chr5", hits.shared[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[5]
+  hits.shared[grep("Chr6", hits.shared[,"Contig"]),"Chromosome Position"] <- as.integer(hits.shared[grep("Chr6", hits.shared[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[6]
+  hits.shared[grep("Chrx", hits.shared[,"Contig"]),"Chromosome Position"] <- as.integer(hits.shared[grep("Chrx", hits.shared[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[7]
+  hits.shared[grep("ChrU", hits.shared[,"Contig"]),"Chromosome Position"] <- as.integer(hits.shared[grep("ChrU", hits.shared[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[8]     
+
+  # Unique in 202T2
+  hits.202T2 <- DFT2[[2]]
+  hits.202T2[grep("Chr2", hits.202T2[,"Contig"]),"Chromosome Position"] <- as.integer(hits.202T2[grep("Chr2", hits.202T2[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[2]
+  hits.202T2[grep("Chr3", hits.202T2[,"Contig"]),"Chromosome Position"] <- as.integer(hits.202T2[grep("Chr3", hits.202T2[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[3]
+  hits.202T2[grep("Chr4", hits.202T2[,"Contig"]),"Chromosome Position"] <- as.integer(hits.202T2[grep("Chr4", hits.202T2[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[4]
+  hits.202T2[grep("Chr5", hits.202T2[,"Contig"]),"Chromosome Position"] <- as.integer(hits.202T2[grep("Chr5", hits.202T2[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[5]
+  hits.202T2[grep("Chr6", hits.202T2[,"Contig"]),"Chromosome Position"] <- as.integer(hits.202T2[grep("Chr6", hits.202T2[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[6]
+  hits.202T2[grep("Chrx", hits.202T2[,"Contig"]),"Chromosome Position"] <- as.integer(hits.202T2[grep("Chrx", hits.202T2[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[7]
+  hits.202T2[grep("ChrU", hits.202T2[,"Contig"]),"Chromosome Position"] <- as.integer(hits.202T2[grep("ChrU", hits.202T2[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[8] 
+  
+  # Unique in 203T3
+  hits.203T3 <- DFT2[[3]]
+  hits.203T3[grep("Chr2", hits.203T3[,"Contig"]),"Chromosome Position"] <- as.integer(hits.203T3[grep("Chr2", hits.203T3[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[2]
+  hits.203T3[grep("Chr3", hits.203T3[,"Contig"]),"Chromosome Position"] <- as.integer(hits.203T3[grep("Chr3", hits.203T3[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[3]
+  hits.203T3[grep("Chr4", hits.203T3[,"Contig"]),"Chromosome Position"] <- as.integer(hits.203T3[grep("Chr4", hits.203T3[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[4]
+  hits.203T3[grep("Chr5", hits.203T3[,"Contig"]),"Chromosome Position"] <- as.integer(hits.203T3[grep("Chr5", hits.203T3[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[5]
+  hits.203T3[grep("Chr6", hits.203T3[,"Contig"]),"Chromosome Position"] <- as.integer(hits.203T3[grep("Chr6", hits.203T3[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[6]
+  hits.203T3[grep("Chrx", hits.203T3[,"Contig"]),"Chromosome Position"] <- as.integer(hits.203T3[grep("Chrx", hits.203T3[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[7]
+  hits.203T3[grep("ChrU", hits.203T3[,"Contig"]),"Chromosome Position"] <- as.integer(hits.203T3[grep("ChrU", hits.203T3[,"Contig"]),"Chromosome Position"])+
+    chromosome.edges[8]
+  
+  
+  # c. Calculate the Platypus-Ratios for Shared Variants
+  
+  # 202T2 
+  call.shared <- str_split_fixed(as.character(hits.shared[,"202T2 Platypus Calls"]),"/", 2)[,1]
+  if(length(grep(",", call.shared))!=0){
+    hits.shared <- hits.shared[-grep(",", call.shared),] 
+    call.shared <- str_split_fixed(as.character(hits.shared[,"202T2 Platypus Calls"]),"/", 2)[,1]
+  }
+  call.shared <- as.integer(call.shared)
+  cov.shared <- str_split_fixed(as.character(hits.shared[,"202T2 Platypus Calls"]),"/", 2)[,2]
+  cov.shared <- as.integer(cov.shared)
+  baf.shared <- call.shared/cov.shared
+  hits.shared[,"202T2 Platypus Calls"] <- baf.shared
+  
+  # 203T3
+  call.shared <- str_split_fixed(as.character(hits.shared[,"203T3 Platypus Calls"]),"/", 2)[,1]
+  if(length(grep(",", call.shared))!=0){
+    hits.shared <- hits.shared[-grep(",", call.shared),] 
+    call.shared <- str_split_fixed(as.character(hits.shared[,"203T3 Platypus Calls"]),"/", 2)[,1]
+  }
+  call.shared <- as.integer(call.shared)
+  cov.shared <- str_split_fixed(as.character(hits.shared[,"203T3 Platypus Calls"]),"/", 2)[,2]
+  cov.shared <- as.integer(cov.shared)
+  baf.shared <- call.shared/cov.shared
+  hits.shared[,"203T3 Platypus Calls"] <- baf.shared
+  
+  
+  # d. Shared-Plot
+  
+  # PDF
+  pdf(paste0("BAF_Shared_Exonhits.pdf"), width=18,height=8)
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+    
+  # Empty Chromosome String
+  empty <- c(1, full.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Chromosome", cex.lab=1.3,
+       main="BAF on Shared Exon INDELs", cex.main=1.8, ylim=c(0,1), col="white", yaxt="n", xaxt="n")
+  axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+  
+  # All Insertions
+  ins.pos <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="I"),"Chromosome Position"])
+  ins.202T2 <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="I"),"202T2 Platypus Calls"])
+  ins.203T3 <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="I"),"203T3 Platypus Calls"])
+  text(x=ins.pos, y=ins.202T2, labels="I", cex=0.8, pch=16, col=rgb(1,0,0,0.6))
+  text(x=ins.pos, y=ins.203T3, labels="I", cex=0.8, pch=16, col=rgb(0,0,1,0.6)) 
+  
+  # All Deletions  
+  dels.pos <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="D"),"Chromosome Position"])
+  dels.202T2 <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="D"),"202T2 Platypus Calls"])
+  dels.203T3 <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="D"),"203T3 Platypus Calls"]) 
+  text(x=dels.pos, y=dels.202T2, labels="D", cex=0.8, pch=16, col=rgb(1,0,0,0.6))
+  text(x=dels.pos, y=dels.203T3, labels="D", cex=0.8, pch=16, col=rgb(0,0,1,0.6))
+  
+  # Add Chromosomal Edges and Description
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  axis(1, at=chromosome.centres[-8], labels=c("Chr. 1", "Chr. 2", "Chr. 3", "Chr. 4", "Chr. 5",
+                                              "Chr. 6", "Chr. X"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("202T2", "203T3"), col=c(rgb(1,0,0,0.8), rgb(0,0,1,0.8)), 
+         pch=16, cex=1.5, pt.cex=2, bty="o", bg="white") 
+  
+  dev.off()
+  
+  
+  # e. Calculate the Platypus Calls for 202T2 unique
+
+  call.202T2 <- str_split_fixed(as.character(hits.202T2[,"Platypus_Calls"]),"/", 2)[,1]
+  if(length(grep(",", call.202T2))!=0){
+    hits.202T2 <- hits.202T2[-grep(",", call.202T2),]     
+    call.202T2 <- str_split_fixed(as.character(hits.202T2[,"Platypus_Calls"]),"/", 2)[,1]
+  }
+  call.202T2 <- as.integer(call.202T2)
+  cov.202T2 <- str_split_fixed(as.character(hits.202T2[,"Platypus_Calls"]),"/", 2)[,2]
+  cov.202T2 <- as.integer(cov.202T2)
+  baf.202T2 <- call.202T2/cov.202T2
+  hits.202T2[,"Platypus_Calls"] <- baf.202T2
+  
+  
+  # f. Calculate the Platypus Calls for 203T3 unique
+  
+  call.203T3 <- str_split_fixed(as.character(hits.203T3[,"Platypus_Calls"]),"/", 2)[,1]
+  if(length(grep(",", call.203T3))!=0){
+    hits.203T3 <- hits.203T3[-grep(",", call.203T3),]     
+    call.203T3 <- str_split_fixed(as.character(hits.203T3[,"Platypus_Calls"]),"/", 2)[,1]
+  }
+  call.203T3 <- as.integer(call.203T3)
+  cov.203T3 <- str_split_fixed(as.character(hits.203T3[,"Platypus_Calls"]),"/", 2)[,2]
+  cov.203T3 <- as.integer(cov.203T3)
+  baf.203T3 <- call.203T3/cov.203T3
+  hits.203T3[,"Platypus_Calls"] <- baf.203T3
+  
+  
+  # g. Plot Unique Individuals
+  
+  pdf(paste0("BAF_Unique_Exonhits.pdf"), width=18,height=14)
+  par(mfrow=c(2,1))
+  mar.default <- c(5,4,4,2) + 0.1
+  par(mar = mar.default + c(0, 5, 0, 0)) 
+  
+  # 202T2
+  
+  # Empty Chromosome String
+  empty <- c(1, full.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Chromosome", cex.lab=1.3,
+       main="BAF on 202T2-Unique Exon INDELs", cex.main=1.8, ylim=c(0,1), col="white", yaxt="n", xaxt="n")
+  axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+  
+  # Shared INDELs (202T2 calls)
+  
+  # Insertions
+  ins.pos <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="I"),"202T2 Platypus Calls"])
+  text(x=ins.pos, y=ins.height, labels="I", cex=0.8, pch=16, col="darkgrey")
+  
+  # Deletions
+  del.pos <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="D"),"Chromosome Position"])
+  del.height <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="D"),"202T2 Platypus Calls"])
+  text(x=del.pos, y=del.height, labels="D", cex=0.8, pch=16, col="darkgrey")
+  
+  
+  # Unique INDELs
+  
+  # Insertions
+  ins.pos <- as.numeric(hits.202T2[which(hits.202T2[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.202T2[which(hits.202T2[,"Type"]=="I"),"Platypus_Calls"])
+  text(x=ins.pos, y=ins.height, labels="I", cex=0.8, pch=16, col=rgb(1,0,0,1))
+  
+  # Deletions
+  del.pos <- as.numeric(hits.202T2[which(hits.202T2[,"Type"]=="D"),"Chromosome Position"])
+  del.height <- as.numeric(hits.202T2[which(hits.202T2[,"Type"]=="D"),"Platypus_Calls"])
+  text(x=del.pos, y=del.height, labels="D", cex=0.8, pch=16, col=rgb(1,0,0,1))
+
+  
+  # Add Chromosomal Edges and Description
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  axis(1, at=chromosome.centres[-8], labels=c("Chr. 1", "Chr. 2", "Chr. 3", "Chr. 4", "Chr. 5",
+                                              "Chr. 6", "Chr. X"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("202T2 Unique", "202T2 Shared"), col=c(rgb(1,0,0,1), "darkgrey"), 
+         pch=16, cex=1.5, pt.cex=2, bty="o", bg="white") 
+  
+  
+  # 203T3
+  
+  # Empty Chromosome String
+  empty <- c(1, full.length)
+  plot(rep(1,2)~empty, type="l", lwd=7, ylab="Call:Coverage", xlab="Chromosome", cex.lab=1.3,
+       main="BAF on 203T3-Unique Exon INDELs", cex.main=1.8, ylim=c(0,1), col="white", yaxt="n", xaxt="n")
+  axis(2, at=c(0, 1/3, 0.5, 2/3, 1), labels=c("0", "1/3", "1/2", "2/3", "1"), cex.axis=0.8)
+  
+  # Shared INDELs (202T2 calls)
+  
+  # Insertions
+  ins.pos <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="I"),"203T3 Platypus Calls"])
+  text(x=ins.pos, y=ins.height, labels="I", cex=0.8, pch=16, col="darkgrey")
+  
+  # Deletions
+  del.pos <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="D"),"Chromosome Position"])
+  del.height <- as.numeric(hits.shared[which(hits.shared[,"Type"]=="D"),"203T3 Platypus Calls"])
+  text(x=del.pos, y=del.height, labels="D", cex=0.8, pch=16, col="darkgrey")
+  
+  
+  # Unique INDELs
+  
+  # Insertions
+  ins.pos <- as.numeric(hits.203T3[which(hits.203T3[,"Type"]=="I"),"Chromosome Position"])
+  ins.height <- as.numeric(hits.203T3[which(hits.203T3[,"Type"]=="I"),"Platypus_Calls"])
+  text(x=ins.pos, y=ins.height, labels="I", cex=0.8, pch=16, col=rgb(0,0,1,1))
+  
+  # Deletions
+  del.pos <- as.numeric(hits.203T3[which(hits.203T3[,"Type"]=="D"),"Chromosome Position"])
+  del.height <- as.numeric(hits.203T3[which(hits.203T3[,"Type"]=="D"),"Platypus_Calls"])
+  text(x=del.pos, y=del.height, labels="D", cex=0.8, pch=16, col=rgb(0,0,1,1))
+  
+  
+  # Add Chromosomal Edges and Description
+  abline(v=chromosome.edges, lwd=2, col="black", lty=2)
+  axis(1, at=chromosome.centres[-8], labels=c("Chr. 1", "Chr. 2", "Chr. 3", "Chr. 4", "Chr. 5",
+                                              "Chr. 6", "Chr. X"), cex.axis=0.8)
+  
+  # Legend
+  legend("bottomleft", legend=c("203T3 Unique", "203T3 Shared"), col=c(rgb(0,0,1,1), "darkgrey"), 
+         pch=16, cex=1.5, pt.cex=2, bty="o", bg="white") 
+  
+  dev.off()
+}
+
+
+# 25. Clustering/Heatmapping on full Output
+clustering.vcf <- function(filtered.vcf, title){
+
+  # Hierarchical Clustering
+  require(cluster)
+  
+  ## Binary
+  pindel.indels <- agnes(t(filtered.vcf$'pindel_only'))
+  pindel.samples <- agnes(filtered.vcf$'pindel_only')
+  platypus.indels <- agnes(t(filtered.vcf$'platypus_only'))
+  platypus.samples <- agnes(filtered.vcf$'platypus_only')   
+  I_clust.indels <- agnes(t(filtered.vcf$'overlap'))
+  I_clust.samples <- agnes(filtered.vcf$'overlap')
+  II_clust.indels <- agnes(t(filtered.vcf$'overlap.trimmed'))
+  II_clust.samples <- agnes(filtered.vcf$'overlap.trimmed')
+  III_clust.indels <- agnes(t(filtered.vcf$'pindel.filter'))
+  III_clust.samples <- agnes(filtered.vcf$'pindel.filter')
+  IV_clust.indels <- agnes(t(filtered.vcf$'platypus.filter'))
+  IV_clust.samples <- agnes(filtered.vcf$'platypus.filter')
+  
+  # Output in separate Folder - which one?
+  setwd("/Users/ms37/Desktop/Labwork/6_June/MT_Phylogeny")
+  
+  # Plot settings
+  heat.cols <- colorRampPalette(c("white", "darkgreen"))(n = 1)
+  
+  # 1. Output Plot: Binary, unfiltered Results
+  pdf(paste0("1_", title, "_Overlap_Phylo.pdf"), width=20, height=7)
+  par(mfrow=c(1,2))
+  plot(I_clust.indels, main = "Overlap: Hierarchical Clustering by INDEL",
+       xlab = "Indels", which.plots=2)
+  plot(I_clust.samples, main = "Overlap: Hierarchical Clustering by SAMPLE",
+       xlab = "Samples", which.plots=2)
+  heatmap(t(filtered.vcf$'overlap'), Colv=F, Rowv=F, cexRow=0.7, cexCol=0.9, scale='none',
+          xlab="Indel Positions", ylab="Samples", col=heat.cols)
+  dev.off()
+
+  # 2. Output Plot: Binary, trimmed Results
+  pdf(paste0("2_", title, "_Overlap_Trimmed_Phylo.pdf"), width=20, height=7)
+  par(mfrow=c(1,2))
+  plot(II_clust.indels, main = "Trimmed-Overlap: Hierarchical Clustering by INDEL",
+       xlab = "Indels", which.plots=2)
+  plot(II_clust.samples, main = "Trimmed-Overlap: Hierarchical Clustering by SAMPLE",
+       xlab = "Samples", which.plots=2)
+  heatmap(t(filtered.vcf$'overlap.trimmed'), Colv=F, Rowv=F, cexRow=0.7, cexCol=0.9, scale='none',
+          xlab="Indel Positions", ylab="Samples", col=heat.cols)
+  dev.off()  
+
+  # 3. Output Plot: Pindel Quality Filtered
+  pdf(paste0("3_", title, "_Pindel_Filtered_Phylo.pdf"), width=20, height=7)
+  par(mfrow=c(1,2))
+  plot(II_clust.indels, main = "Pindel-Quality Filtered: Hierarchical Clustering by INDEL",
+       xlab = "Indels", which.plots=2)
+  plot(II_clust.samples, main = "Pindel-Quality Filtered: Hierarchical Clustering by SAMPLE",
+       xlab = "Samples", which.plots=2)
+  heatmap(t(filtered.vcf$'pindel.filter'), Colv=F, Rowv=F, cexRow=0.7, cexCol=0.9, scale='none',
+          xlab="Indel Positions", ylab="Samples", col=heat.cols)
+  dev.off()  
+  
+  # 4. Output Plot: Platypus Quality Filtered
+  pdf(paste0("4_", title, "_Platypus_Filtered_Phylo.pdf"), width=20, height=7)
+  par(mfrow=c(1,2))
+  plot(II_clust.indels, main = "Platypus-Quality Filtered: Hierarchical Clustering by INDEL",
+       xlab = "Indels", which.plots=2)
+  plot(II_clust.samples, main = "Platypus-Quality Filtered: Hierarchical Clustering by SAMPLE",
+       xlab = "Samples", which.plots=2)
+  heatmap(t(filtered.vcf$'platypus.filter'), Colv=F, Rowv=F, cexRow=0.7, cexCol=0.9, scale='none',
+          xlab="Indel Positions", ylab="Samples", col=heat.cols)
+  dev.off() 
+  
+  # 5. Output Plot: All Heatmaps
+  pdf(paste0("5_", title, "_heatmaps.pdf"), width=20, height=12)  
+  heatmap(t(filtered.vcf$'pindel_only'), Colv=F, Rowv=F, cexRow=0.9, cexCol=0.9, scale='none',
+          xlab="Indel Positions [I. cgpPindel only, unfiltered]", ylab="Samples", col=heat.cols)
+  heatmap(t(filtered.vcf$'platypus_only'), Colv=F, Rowv=F, cexRow=0.9, cexCol=0.9, scale='none',
+          xlab="Indel Positions [I. Platypus only, unfiltered]", ylab="Samples", col=heat.cols)    
+  heatmap(t(filtered.vcf$'overlap.trimmed'), Colv=F, Rowv=F, cexRow=0.9, cexCol=0.9, scale='none',
+          xlab="Indel Positions [II. Overlap cgpPindel/Platypus]", ylab="Samples", col=heat.cols) 
+  heatmap(t(filtered.vcf$'pindel.filter'), Colv=F, Rowv=F, cexRow=0.9, cexCol=0.9, scale='none',
+          xlab="Indel Positions [III. cgpPindel-Quality]", ylab="Samples", col=heat.cols)  
+  heatmap(t(filtered.vcf$'platypus.filter'), Colv=F, Rowv=F, cexRow=0.9, cexCol=0.9, scale='none',
+          xlab="Indel Positions [IV. cgpPindel & Platypus-Quality]", ylab="Samples", col=heat.cols)
+  dev.off()
+}
