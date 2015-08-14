@@ -3,10 +3,10 @@
 <p>## Version 1.0 ##</p>
 <p>## Developped as part of a Computational Biology MPhil Internship ##</p>
 <p>## University of Cambridge, UK ##</p>
-<p>## by Maximilian R. Stammnitz ##</p>
+<p>## DAMTP / DVMS / WTSI ##</p>
 
 
-<b>############ 14-08-2015: UPDATE - INDELWALD 1.0 PART I ONLINE ##############</b>
+<b>############ 14-08-2015: UPDATE - INDELWALD 1.0 ONLINE (PART I) ##############</b>
 
 The toy example reaches daylight.
 
