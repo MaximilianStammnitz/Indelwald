@@ -17,6 +17,7 @@
 8. A CSV-table with all annotated COSMIC cancer gene consensus genes and their characteristics
 
 <b>############ 14-08-2015: UPDATE ##############</b>
+
 <b>############ FILE UPLOAD IN VERY SHORT. ##############</b>
 
 Portions of the raw input of our toy example, and associated file/function names of Indelwald, comprise strictly confidential informations on a recently submitted article on the origin of these samples (Pye et al.). Our group was hoping until the last that this paper would be released before the deadline of the Indelwald-associated thesis ('Indels in Tasmanian Devils'), but unfortunately it is ongoingly reviewed. In order to share the code nevertheless, a careful renaming (and some revision) has been undertaken in the last two days. Non-conflicting code will be released later today, on <b> Friday, 14th August</b>.
