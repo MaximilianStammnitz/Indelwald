@@ -1,7 +1,7 @@
 <b>############ INDELWALD - HYBRID INDEL CALLING ##############</b>
 
 <p>## Version 1.0 ##</p>
-<p>## Developped as part a Computational Biology MPhil Internship ##</p>
+<p>## Developped as part of a Computational Biology MPhil Internship ##</p>
 <p>## by Maximilian R. Stammnitz ##</p>
 <p>## University of Cambridge, UK ##</p>
 
