@@ -9,12 +9,10 @@
 
 The second Toy Example is now only, encompassing the crossreferencing steps.
 
-Filtered and non-filtered sets of three anonymised hosts and tumours are provided as a binary RData-file: “Toy2_Crossreference.Rdata”.
+Filtered and non-filtered sets of three anonymised hosts and tumours are provided as a binary RData-file: “Toy2_Crossreference.Rdata”. Users can now browse through all traits of Indelwald 1.0, in two step-by-step tutorials. These guide through plotting and data summary functions: 
 
-Users can now browse through all traits of Indelwald 1.0, in two step-by-step tutorials. These guide through plotting and data summary functions:
-
-Stringent Indel filtering (1_Indelwald_main.R)
-Cross-referencing (2_Indelwald_main.R)
+- 1. Stringent Indel filtering (1_Indelwald_main.R)
+- 2. Cross-referencing (2_Indelwald_main.R)
 
 
 
