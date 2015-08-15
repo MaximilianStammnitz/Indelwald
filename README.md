@@ -4,6 +4,8 @@
 <p>## Developped as part of a Computational Biology MPhil Internship ##</p>
 <p>## University of Cambridge, UK ##</p>
 <p>## DAMTP / DVMS / WTSI ##</p>
+<b>## Folder: Info-Files ##</b>
+
 
 <b>############ 15-08-2015: UPDATE - INDELWALD 1.0 ONLINE (PART II) ##############</b>
 
