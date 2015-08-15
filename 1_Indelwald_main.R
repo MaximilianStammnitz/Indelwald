@@ -1,7 +1,7 @@
 ############ INDELWALD - HYBRID INDEL CALLING ##############
 ####################### Version 1.0 ########################
 
-## MAIN
+## STRINGENT FILTERING
 ## Last Update - 14/08/2015 ##
 ## mrs72 / Maximilian Stammnitz ##
 
@@ -16,27 +16,27 @@ library(stringr)
 library(data.table)
 library(GenomicRanges)
 
-# Source Functions and Helper Files (~ 30 seconds)
-source("2_Indelwald_functions.R")
+# Source Functions and Helper Files (~ 5 seconds)
+source("1_Indelwald_functions.R")
 
-# Load the Toy Dataset  (~ 5 seconds)
-# 3 Tumour-VCFs of Platypus & Pindel, for Devil Chromosome 5
-# 3 Host-VCFs of Platypus & Pindel, for Devil Chromosome 5
-load(paste0(main.path,"/Toy/Toy_Inputs.Rdata"))
+# Load the Toy Dataset
+# 1 Tumour-VCF of Platypus & Pindel, for Devil Chromosome 5 (Example)
+# 1 Host-VCF of Platypus & Pindel, for Devil Chromosome 5
+load(paste0(main.path,"/Toy/Toy1_Stringent.Rdata"))
 
 
 ## 2. Checking Caller's Raw Output  ## 
 ## ## ## ## ## ## ## ## ## ## ## ## ##
 
-## Venn Overlap between Pindel and Platypus
-raw.calls(pindel.vcf = pindel.tumours[[1]],
-          platypus.vcf = platypus.tumours[[1]],
+## Venn Overlap between Pindel and Platypus (~ 5 seconds)
+raw.calls(pindel.vcf = tumour.pindel,
+          platypus.vcf = tumour.platypus,
           chromosome = "5",
           sample = "Tumour_#1")
 
 ## Size Spectrum of Pindel and Platypus
-raw.sizes(pindel.vcf = pindel.tumours[[1]],
-          platypus.vcf = platypus.tumours[[1]],
+raw.sizes(pindel.vcf = tumour.pindel,
+          platypus.vcf = tumour.platypus,
           chromosome = "5",
           sample = "Tumour_#1")
 
@@ -49,8 +49,8 @@ names(tumour.1) <- c("overlap", "pindel-Q",
                      "platypus-Q", "summary", "in-transcript")
 
 ## Take Platypus/Pindel-Intersection
-tumour.1[[1]] <- overlap.vcfs(pindel.vcf = pindel.tumours[[1]],
-                              platypus.vcf = platypus.tumours[[1]])
+tumour.1[[1]] <- overlap.vcfs(pindel.vcf = tumour.pindel,
+                              platypus.vcf = tumour.platypus)
 
 # Apply a Pindel-Quality Filter (default Threshold: 200)
 tumour.1[[2]] <- pindel.filter(overlap = tumour.1$'overlap',
@@ -118,8 +118,8 @@ View(tumour.1$'in-transcript'[,c(12,14,1,3:7)])
 ## 6. Collect Stats  ##
 ## ## ## ## ## ## ## ##
 
-final.results.plots(pindel.vcf = pindel.tumours[[1]],
-                    platypus.vcf = platypus.tumours[[1]],
+final.results.plots(pindel.vcf = tumour.pindel,
+                    platypus.vcf = tumour.platypus,
                     summary.list = tumour.1,
                     chromosome = "5",
                     sample = "Tumour_#1")
