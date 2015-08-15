@@ -14,7 +14,7 @@ Filtered and non-filtered sets of three anonymised hosts and tumours are provide
 - 1. Stringent Indel filtering (1_Indelwald_main.R)
 - 2. Cross-referencing (2_Indelwald_main.R)
 
-
+New plots include Venn-Diagrams between the panel of hosts and each tumour, as well as a hierarchical clustering and heatmap for all samples, based on shared/unique indels present in exons.
 
 <b>############ 14-08-2015: UPDATE - INDELWALD 1.0 ONLINE (PART I) ##############</b>
 
