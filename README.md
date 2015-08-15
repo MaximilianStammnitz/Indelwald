@@ -9,14 +9,17 @@
 
 <b>############ 15-08-2015: UPDATE - INDELWALD 1.0 ONLINE (PART II) ##############</b>
 
-The second Toy Example is now only, encompassing the crossreferencing steps.
+The second Toy Example is now online, encompassing all crossreferencing steps.
 
 Filtered and non-filtered sets of three anonymised hosts and tumours are provided as a binary RData-file: “Toy2_Crossreference.Rdata”. Users can now browse through all traits of Indelwald 1.0, in two step-by-step tutorials. These guide through plotting and data summary functions: 
 
 - 1. Stringent Indel filtering (1_Indelwald_main.R)
 - 2. Cross-referencing (2_Indelwald_main.R)
 
-New plots include Venn-Diagrams between the panel of hosts and each tumour, as well as a hierarchical clustering and heatmap for all samples, based on shared/unique indels present in exons.
+New plots include:
+- Venn-Diagrams between the panel of hosts and each tumour
+- hierarchical clustering and heatmap for all samples, based on shared/unique indels present in exons.
+
 
 <b>############ 14-08-2015: UPDATE - INDELWALD 1.0 ONLINE (PART I) ##############</b>
 
