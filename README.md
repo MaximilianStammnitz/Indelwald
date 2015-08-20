@@ -1,4 +1,4 @@
-<b>############ INDELWALD - HYBRID INDEL CALLING ##############</b>
+<b>####### INDELWALD - HYBRID R-BASED PROCESSING OF INDEL-CALLS ########</b>
 
 <p>## Version 1.0 ##</p>
 <p>## Developped as part of a Computational Biology MPhil Internship ##</p>
