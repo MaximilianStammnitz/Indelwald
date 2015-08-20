@@ -880,4 +880,12 @@ devil.genes <- read.table("Devil_Genes_7.1_chr5.txt", header=T)
 devil.transcripts <- read.table("Devil_Transcript_7.1.txt", header=T, sep=";")
 devil.genes.trans <- read.table("Devil_Genes_7.1_ENSEMBL_translated.txt", header=T, sep=";")
 devil.transcripts.trans <- read.table("Devil_Transcript_7.1_ENSEMBL_translated.txt", header=T, sep=";")
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+#all.contigs <- read.table("Contig_Translate.txt")
+#cosmic.genes <- read.csv("COSMIC_Drivers.csv")
+=======
+>>>>>>> master
+>>>>>>> FETCH_HEAD
 setwd(main.path)
