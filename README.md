@@ -1,7 +1,7 @@
 <b>####### INDELWALD - HYBRID R-BASED PROCESSING OF INDEL-CALLS ########</b>
 
 <p>## Version 1.0 ##</p>
-<p>## Developped as part of a Computational Biology MPhil Internship ##</p>
+<p>## Developed as part of a Computational Biology MPhil Internship ##</p>
 <p>## University of Cambridge, UK ##</p>
 <p>## DAMTP / DVMS / WTSI ##</p>
 
