@@ -11,7 +11,7 @@ Note that, in order to produce your own indel spectra, you will need to provide 
 
 Disclaimer #1: This script and its associated results are yet unpublished. We won't pay your insurance on potentially false outputs. 
 
-Disclaimer #2: I have stolen the color scheme from Alexandrov et al’s original [SigProfiler plotting](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py).
+Disclaimer #2: I have stolen the color scheme from Erik Bergströms original [SigProfiler plotting python code](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py).
 
 <b>############ 15-08-2015: UPDATE ##############</b>
 
