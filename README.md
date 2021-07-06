@@ -10,7 +10,7 @@ Note that, in order to produce your own indel spectra, you will need to provide 
 
 ![example](./COSMIC_ID1.png)
 
-Disclaimer #1: This script and its associated results are yet unpublished. We won't pay your insurance on potentially false outputs. 
+Disclaimer #1: This script and its associated results are yet unpublished. We won't pay your insurance for potentially false outputs. 
 
 Disclaimer #2: I have stolen the color scheme from Erik Bergstroms original [SigProfiler plotting python code](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py).
 
