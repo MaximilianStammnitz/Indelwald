@@ -4,6 +4,9 @@
 <p>## University of Cambridge, UK ##</p>
 <p>## DAMTP / DVetMed / WTSI ##</p>
 
+![Indelwald](./Indelwald_logo.png)
+
+
 <b>############ 06-07-2021: UPDATE ##############</b>
 
 Six years after its opening, I've finally added a new piece of R code to this repository. Using this, we generate indel variant spectra from input VCF files, in line with the PCAWG indel classifications specified in [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) ([COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
