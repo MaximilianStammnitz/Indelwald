@@ -1,10 +1,8 @@
 <b>####### INDELWALD - SCRIPTS FOR PROCESSING INDEL-CALLS ########</b>
-
+![Indelwald](./Indelwald_logo.png)
 <p>## First developed as part of a Computational Biology MPhil Internship in 2015 ##</p>
 <p>## University of Cambridge, UK ##</p>
 <p>## DAMTP / DVetMed / WTSI ##</p>
-
-![Indelwald](./Indelwald_logo.png)
 
 
 <b>############ 06-07-2021: UPDATE ##############</b>
