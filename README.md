@@ -6,9 +6,11 @@ Indelwald - Scripts for processing Indel calls
 
 Six years after its opening, I've finally added a new piece of R code to this repository. Using this, we generate indel variant spectra from input VCF files, in line with the PCAWG indel classifications specified in [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) ([COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
 
-Note that, in order to produce your own indel spectra, you will need to provide the reference genome fasta file based on which your indel genotypes were called in the first place. My code then groups all insertion and deletion variants based on the (current, as of July 2021) 83 different different consensus types agreed upon by the PCAWG signature consortium, [based both on their lengths, sequence type and immediate sequence context](https://cancer.sanger.ac.uk/signatures/documents/4/PCAWG7_indel_classification_2017_12_08.xlsx). 
+Note that, in order to produce your own indel spectra, you will need to provide the reference genome fasta file based on which your indel genotypes were called in the first place. My code then groups all insertion and deletion variants based on the (current, as of July 2021) 83 different different consensus types agreed upon by the PCAWG signature consortium, [based both on their lengths, sequence type and immediate sequence context](https://cancer.sanger.ac.uk/signatures/documents/4/PCAWG7_indel_classification_2017_12_08.xlsx). An example spectrum would look like this:
+![example](./COSMIC_ID1.png)
 
 Disclaimer #1: This script and its associated results are yet unpublished. We won't pay your insurance on potentially false outputs. 
+
 Disclaimer #2: I have stolen the color scheme from Alexandrov et al’s original [SigProfiler plotting](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py).
 
 <b>############ 15-08-2015: UPDATE ##############</b>
