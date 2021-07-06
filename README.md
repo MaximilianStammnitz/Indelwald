@@ -1,9 +1,6 @@
-<b>####### INDELWALD - SCRIPTS FOR PROCESSING INDEL-CALLS ########</b>
+Indelwald - Scripts for processing Indel calls
+==============================================
 ![Indelwald](./Indelwald_logo.png)
-<p>## First developed as part of a Computational Biology MPhil Internship in 2015 ##</p>
-<p>## University of Cambridge, UK ##</p>
-<p>## DAMTP / DVetMed / WTSI ##</p>
-
 
 <b>############ 06-07-2021: UPDATE ##############</b>
 
@@ -43,3 +40,9 @@ indel outputs from Pindel and Platypus. An RData-binary file was created, respec
 Note, that 5 R-packages need to be installed on your machine to get all functions running properly: VennDiagram, gridExtra, stringr, data.table, and GenomicRanges. The total zip-file comprises 20MB.
 
 Enjoy Indelwald!
+
+<b>############ 14-08-2015 ##############</b>
+
+<p>## Developed as part of a Computational Biology MPhil Internship in 2015 ##</p>
+<p>## University of Cambridge, UK ##</p>
+<p>## DAMTP / DVetMed / WTSI ##</p>
