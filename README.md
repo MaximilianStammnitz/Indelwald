@@ -10,9 +10,10 @@ Note that, in order to produce your own indel spectra, you will need to provide 
 
 ![example](./COSMIC_ID1.png)
 
-Disclaimer #1: This script and its associated results are yet unpublished. We won't pay your insurance for potentially false outputs. 
+Disclaimer #1: I have stolen the color scheme from Erik Bergstroms original [SigProfiler plotting python code](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py).
 
-Disclaimer #2: I have stolen the color scheme from Erik Bergstroms original [SigProfiler plotting python code](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py).
+Disclaimer #2: This script and its associated results are yet unpublished. We won't pay your insurance for potentially false outputs, but I am happy to provide support/feedback; feel free to get in touch via email: maxrupsta@gmail.com
+
 
 <b>############ 15-08-2015: UPDATE ##############</b>
 
@@ -49,5 +50,3 @@ Enjoy Indelwald!
 <p>## Developed as part of a Computational Biology MPhil Internship in 2015 ##</p>
 <p>## University of Cambridge, UK ##</p>
 <p>## DAMTP / DVetMed / WTSI ##</p>
-<p>## Any questions, just mail me: maxrupsta@gmail.com ##</p>
-
