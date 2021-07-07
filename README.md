@@ -2,17 +2,17 @@ Indelwald - Scripts for processing Indel calls
 ==============================================
 ![Indelwald](/Images/Indelwald_logo.png)
 
-<b>############ 06-07-2021: UPDATE ##############</b>
+<b>############ 07-07-2021: UPDATE ##############</b>
 
 Six years after its opening, I've finally added a [new piece of R code](/Scripts/3_Indelwald_spectrum.R) to the Indelwald repository. Using this, we generate indel variant spectra from input VCF files, in line with the PCAWG indel classification scheme specified by [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) (see [COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
 
-Note that, in order to produce your own indel spectra, you will need to provide the reference genome fasta file based on which your alignments' indel calls were generated in the first place. My code then groups all of your co-specified VCF's insertion and deletion variants based on the (current) 83 different indel types agreed upon by the PCAWG signature consortium – these reflect a consensus rule set [regarding variant lengths, sequence type and immediate sequence context](https://cancer.sanger.ac.uk/signatures/documents/4/PCAWG7_indel_classification_2017_12_08.xlsx). Output spectra look more or less like this ID1 signature example, which is indicative of polymerase slippage and particularly prominent in cancers with DNA mismatch repair (MMR) deficiency:
+Note that, in order to produce your own indel spectra, you will need to provide the reference genome fasta file based on which your alignments' indel calls were generated in the first place. My code then groups all of your co-specified VCF's insertion and deletion variants based on the (current) 83 different indel types agreed upon by the PCAWG signature consortium – these reflect a consensus rule set [regarding variant lengths, sequence type and immediate sequence context](https://cancer.sanger.ac.uk/signatures/documents/4/PCAWG7_indel_classification_2017_12_08.xlsx). Output spectra look more or less like this ID1 signature example, which would be indicative of polymerase slippage and is particularly prominent in cancers with DNA mismatch repair (MMR) deficiency:
 
 ![example](/Images/COSMIC_ID1.png)
 
-Disclaimer #1: I have stolen the color scheme from Erik Bergstroms original [SigProfiler plotting python code](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py).
+Disclaimer #1: We have shamelessly stolen the color scheme from Erik Bergstroms original [SigProfiler plotting python code](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py). The rest of this code was written from scratch.
 
-Disclaimer #2: This script and its associated results are yet unpublished. We won't pay your insurance for potentially false outputs, but I am of course very happy to provide support and would be delighted to have your feedback; please feel free to get in touch via maxrupsta@gmail.com
+Disclaimer #2: This script and its associated results are yet unpublished. We won't pay your insurance for the outputs, but I am of course very happy to provide support and would be delighted to have your feedback; please feel free to get in touch directly via maxrupsta@gmail.com
 
 
 <b>############ 15-08-2015: UPDATE ##############</b>
