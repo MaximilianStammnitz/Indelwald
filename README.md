@@ -2,7 +2,7 @@ Indelwald - Scripts for processing Indel calls
 ==============================================
 ![Indelwald](/Images/Indelwald_logo.png)
 
-<b>############ 07-07-2021: UPDATE ##############</b>
+<b>############ 08-07-2021: UPDATE ##############</b>
 
 Six years after its opening, I've finally added a [new piece of R code](/Scripts/3_Indelwald_spectrum.R) to the Indelwald repository. Using this, we generate indel variant spectra from input VCF files, in line with the PCAWG indel classification scheme specified by [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) (see [COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
 
