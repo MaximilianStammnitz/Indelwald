@@ -10,10 +10,9 @@ Note that, in order to produce your own indel spectra, you will need to provide 
 
 ![example](/Images/COSMIC_ID1.png)
 
-Disclaimer #1: We have shamelessly stolen the color scheme from Erik Bergstroms original [SigProfiler plotting python code](https://github.com/AlexandrovLab/SigProfilerPlotting/blob/master/sigProfilerPlotting/sigProfilerPlotting.py). The rest was written from scratch.
+Disclaimer #1: The script and its associated results are yet unpublished. It has nevertheless been extensively validated with indel calls derived from (i) human, (ii) dog and (iii) Tasmanian devil genomes/tumours. Technically, the code should run smoothly for any species with a reference genome. If you do face a challenge in using the code, please get in touch directly via maxrupsta@gmail.com
 
-Disclaimer #2: The script and its associated results are yet unpublished. I won't cover your insurance for the outputs, but am of course very happy to provide support and would be delighted to have your feedback; please feel free to get in touch directly via maxrupsta@gmail.com
-
+Disclaimer #2: Color scheme is the same as the one used in the original PCAWG paper. The rest was written from scratch.
 
 <b>############ 15-08-2015: UPDATE ##############</b>
 
