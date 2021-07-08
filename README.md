@@ -4,7 +4,7 @@ Indelwald - Scripts for processing Indel calls
 
 <b>############ 08-07-2021: UPDATE ##############</b>
 
-Six years after its opening, I've finally added a [new piece of R code](/Scripts/3_Indelwald_spectrum.R) to the Indelwald repository. Using this, we generate indel variant spectra from input VCF files, in line with the PCAWG indel classification scheme specified by [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) (see [COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
+Six years after its opening, I have added a [new piece of R code](/Scripts/3_Indelwald_spectrum.R) to the Indelwald repository. Using this, we generate indel variant spectra from input VCF files, in line with the PCAWG indel classification scheme specified by [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) (see [COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
 
 Note that, in order to produce your own indel spectra, you will need to provide the reference genome fasta file based on which your alignments' indel calls were generated in the first place. My code then groups all of your co-specified VCF's insertion and deletion variants based on the (current) 83 different indel types agreed upon by the PCAWG signature consortium – these reflect a consensus rule set [regarding variant lengths, sequence type and immediate sequence context](https://cancer.sanger.ac.uk/signatures/documents/4/PCAWG7_indel_classification_2017_12_08.xlsx). Plotted spectra look like this example:
 
