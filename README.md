@@ -14,7 +14,7 @@ My code then groups all of your short (< 80 bp) insertion and deletion variants 
 
 ![example](/Images/Example_spectrum.png)
 
-In the above example we see enrichments of C and T extensions at C or T homopolymers, respectively. These spikes are indicative of DNA polymerase slippage, which is particularly prominent in tissues with DNA mismatch repair (MMR) deficiency commonly termed as COSMIC signatures ID1 and ID2.
+In the above example, we see enrichments of single base T deletions or extensions at poly-T homopolymers (lengths ≥5 bp). These spikes are indicative of DNA polymerase slippage, which is particularly prominent in tissues with DNA mismatch repair (MMR) deficiency – commonly classified as COSMIC signatures ID1 and ID2.
 
 Disclaimer #1: The script and its associated results are yet unpublished. It has nevertheless been extensively validated with indel calls derived from (i) human, (ii) dog and (iii) Tasmanian devil genomes/tumours. Technically, the code should run smoothly for any species with a reference genome. If you do face a challenge in using the code, please get in touch directly via maxrupsta@gmail.com
 
