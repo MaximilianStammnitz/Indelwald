@@ -1,6 +1,6 @@
 ############ INDELWALD - INDEL SPECTRUM ##############
 
-## Last Update - 08/07/2021 ##
+## Last Update - 24/09/2021 ##
 ## mrs72 / Max Stammnitz ##
 ## maxrupsta@gmail.com ##
 ## University of Cambridge  ##
@@ -77,7 +77,7 @@ indel.spectrum <- function(x){
                                        dels.1bp.context.rc.start[,7], dels.1bp.context.rc.start[,8], dels.1bp.context.rc.start[,9],
                                        dels.1bp.context.rc.start[,10], sep = '')
     dels.1bp.context.rc.end <- str_split_fixed(dels.1bp.context.rc, '', 12)[,12,drop=F]
-    dels.1bp <- cbind(dels.1bp[,1:5], paste(dels.1bp.context.rc.start, dels.1bp.context.rc.middle, dels.1bp.context.rc.end, sep = ''))
+    dels.1bp <- cbind(dels.1bp[,1:5,drop=F], paste(dels.1bp.context.rc.start, dels.1bp.context.rc.middle, dels.1bp.context.rc.end, sep = ''))
     colnames(dels.1bp)[6] <- 'CONTEXT RC'
     
     ## summarise 1 bp deletions in matrix format
@@ -249,7 +249,7 @@ indel.spectrum <- function(x){
     }
     
   }else{
-
+    
     ## summarise 1 bp deletions in matrix format
     dels.1bp.summary <- matrix(0, ncol = 2, nrow = 6)
     colnames(dels.1bp.summary) <- c('C', 'T') ## pyrimidine-centred deleted base
@@ -286,7 +286,7 @@ indel.spectrum <- function(x){
                                       ins.1bp.context.rc.start[,7], ins.1bp.context.rc.start[,8], ins.1bp.context.rc.start[,9],
                                       ins.1bp.context.rc.start[,10], sep = '')
     ins.1bp.context.rc.end <- str_split_fixed(ins.1bp.context.rc, '', 11)[,11,drop=F]
-    ins.1bp <- cbind(ins.1bp[,1:5], paste(ins.1bp.context.rc.start, ins.1bp.context.rc.middle, ins.1bp.context.rc.end, sep = ''))
+    ins.1bp <- cbind(ins.1bp[,1:5,drop=F], paste(ins.1bp.context.rc.start, ins.1bp.context.rc.middle, ins.1bp.context.rc.end, sep = ''))
     colnames(ins.1bp)[6] <- 'CONTEXT RC'
     
     ## summarise 1 bp insertions in matrix format
@@ -490,7 +490,7 @@ indel.spectrum <- function(x){
   
   # (ii) 3 bp deletions at simple repeats (length 1 == "no neighbouring simple repeat")
   if(nrow(dels.3bp) > 0){
-   
+    
     ## extract 5 x 3 bp upstream/downstream sequence context from reference
     dels.3bp.context <- as.character(subseq(x = reference[as.character(dels.3bp[,'CHROM'])], 
                                             start = as.numeric(dels.3bp[,'POS']) - 14, 
@@ -944,7 +944,7 @@ indel.spectrum <- function(x){
       } 
       
     }
-      
+    
   }
   
   ## 4 bp
@@ -1627,7 +1627,7 @@ reference <- readDNAStringSet('my_reference.fa.gz')
 # 3.) REFERENCE SEQUENCE -> 'REF'
 # 4.) ALTERNATE SEQUENCE -> 'ALT
 input.vcf <- read.vcfR('my_indels.vcf.gz')
-input.vcf <- input.vcf@fix[,colnames(input.vcf@fix) %in% c('CHROM', 'POS', 'REF', 'ALT')]
+input.vcf <- cbind(input.vcf@fix[,c('CHROM', 'POS', 'REF', 'ALT')], 'TRIPLET'= NA)
 
 ### 2.c Generate the indel spectrum
 #### Notes:
