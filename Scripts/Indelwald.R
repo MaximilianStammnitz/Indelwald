@@ -1,4 +1,4 @@
-############ INDELWALD - INDEL SPECTRUM ##############
+############ INDELWALD - GENERATE AND PLOT INDEL SPECTRA ##############
 
 ## Last Update - 24/09/2021 ##
 ## mrs72 / Max Stammnitz ##
