@@ -1,6 +1,6 @@
-############ INDELWALD - GENERATE AND PLOT INDEL SPECTRA ##############
+############ INDELWALD - INDEL SPECTRA FOR EVERYONE ##############
 
-## Last Update - 24/09/2021 ##
+## Last Update - 23/01/2022 ##
 ## mrs72 / Max Stammnitz ##
 ## maxrupsta@gmail.com ##
 ## University of Cambridge  ##
