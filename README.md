@@ -1,7 +1,7 @@
 ![Scripting](https://img.shields.io/badge/Language-R-yellow.svg) ![Copyright](https://img.shields.io/badge/Copyright-(c)_2021_Max\_Stammnitz\_@TCG\_Cambridge-green.svg)
 
-Indelwald
-=========
+Indelwald – from indels to indel spectrum
+=========================================
 ![Indelwald](/Images/Indelwald_logo.png)
 
 
