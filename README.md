@@ -4,9 +4,8 @@ Indelwald - Scripts for processing Indel calls
 ==============================================
 ![Indelwald](/Images/Indelwald_logo.png)
 
-<b>############ 08-07-2021: UPDATE ##############</b>
 
-Six years after its opening, I have added a [new piece of R code](/Indelwald.R) to the Indelwald repository. Using this, we generate indel variant spectra in line with the complex PCAWG classification scheme specified by [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) (see [COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
+Using the functions in [Indelwald](/Indelwald.R), we generate short insertion and deletion – also termed indels (ID) – spectra in line with the complex PCAWG classification scheme first specified by [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) (see [COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
 
 Note that, in order to produce your own indel spectra, you will need to specify:
 * the reference genome fasta file based on which your alignments' indel calls were generated
