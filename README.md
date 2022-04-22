@@ -2,8 +2,6 @@
 
 Indelwald – from indel calls to indel spectra
 =============================================
-![Indelwald](/Images/Indelwald_logo.png)
-
 
 Using the functions in [Indelwald](/Indelwald.R), we generate short insertion and deletion – also termed indels (ID) – spectra in line with the complex PCAWG classification scheme first specified by [Alexandrov et al., 2020](https://www.nature.com/articles/s41586-020-1943-3) (see [COSMIC ID signature catalogues](https://cancer.sanger.ac.uk/signatures/id/)).
 
