@@ -18,3 +18,9 @@ In the above case, we see enrichments of single-T deletions or extensions at pol
 We have extensively benchmarked this script with indel calls from the [Wellcome Sanger Institute's cross-species mutation rate project (Cagan, Baez-Ortega et al., Nature 2022)](https://www.nature.com/articles/s41586-022-04618-z), featuring the following species: Human, Black-and-white colobus, Cat, Cow, Dog, Ferret, Giraffe, Harbour porpoise, Horse, Lion, Mouse, Naked mole-rat, Rabbit, Rat, Ringle-tailed lemur and Tiger. In theory, this code should run smoothly for ANY species with a reference genome.
 
 Find it helpful or you simply enjoy making Indelwald spectra against your brand-new, awesome reference genome? Then why not surf the wave with your substitution calls? – have a look at its sister library [SubstitutionSafari](https://github.com/MaximilianStammnitz/SubstitutionSafari)! If you do face a challenge in using the code or wish to provide general feedback, please get in touch directly via maxrupsta@gmail.com
+
+---
+
+## Citation
+
+If you can make good use of these functions in your work, I would be grateful for your citation of our associated preprint: **The evolution of two transmissible cancers in Tasmanian devils ([Stammnitz _et al._ 2022, bioRxiv](https://www.biorxiv.org/content/10.1101/2022.05.27.493404v1))**
