@@ -23,4 +23,4 @@ Find it helpful or you simply enjoy making Indelwald spectra against your brand-
 
 ## Citation
 
-If you can make good use of these functions in your work, I would be grateful for your citation of our associated preprint: **The evolution of two transmissible cancers in Tasmanian devils ([Stammnitz _et al._ 2022, bioRxiv](https://www.biorxiv.org/content/10.1101/2022.05.27.493404v1))**
+If you can make good use of these functions in your work, I would be grateful for your citation of our associated preprint: **The evolution of two transmissible cancers in Tasmanian devils ([Stammnitz _et al._ 2023, Science 380:6642](https://doi.org/10.1126/science.abq6453))**
