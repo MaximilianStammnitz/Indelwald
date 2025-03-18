@@ -9,7 +9,7 @@ Note that, in order to produce your own indel spectra, you will need to specify:
 * the reference genome fasta file based on which your alignments' indel calls were generated
 * a VCF or dataframe object containing one indel per line, featuring the minimal set of columns "CHROM", "POS", "REF", "ALT"
 
-My code then groups all of your short (< 80 bp) insertion and deletion variants based on the (current) 83 different indel types agreed upon by the PCAWG signature consortium – these reflect a consensus rule set [regarding variant lengths, sequence type and immediate sequence context](https://cancer.sanger.ac.uk/signatures/documents/4/PCAWG7_indel_classification_2017_12_08.xlsx). Plotted spectra look like this example:
+My code then groups all of your short (< 80 bp) insertion and deletion variants based on the (current) 83 different indel types agreed upon by the PCAWG signature consortium – these reflect a consensus rule set [regarding variant lengths, sequence type and immediate sequence context](https://cancer.sanger.ac.uk/signatures/documents/4/PCAWG7_indel_classification_2021_08_31.xlsx). Plotted spectra look like this example:
 
 ![example](/Images/Example_spectrum.png)
 
